@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About • 42 Webserv</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --secondary: #10b981;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --gray: #6b7280;
+            --border: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            gap: 12px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .card p {
+            color: var(--gray);
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature-item {
+            background: var(--light);
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+        
+        .feature-item strong {
+            color: var(--dark);
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .feature-item p {
+            color: var(--gray);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+        
+        /* Tech Badges */
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .badge {
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid #dbeafe;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid transparent;
+        }
+        
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border-color: var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--light);
+            transform: translateY(-2px);
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray);
+            margin-top: 60px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .server-info {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--light);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 500px;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="/" class="back-link">← Back to Home</a>
+            <h1>About 42 Webserv</h1>
+            <p class="subtitle">
+                A custom HTTP/1.1 web server built from scratch in C++ 
+                as part of 42 School curriculum.
+            </p>
+        </header>
+        
+        <div class="card">
+            <h2>Project Overview</h2>
+            <p>42 Webserv is a project from 42 School where students build a complete HTTP web server from scratch using C++. The server handles HTTP requests, serves files, executes CGI scripts, and manages multiple concurrent connections.</p>
+            <p>This project demonstrates deep understanding of network programming, HTTP protocol, and system-level I/O handling.</p>
+        </div>
+        
+        <div class="card">
+            <h2>Core Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <strong>⚡ HTTP/1.1 Compliant</strong>
+                    <p>Full support for HTTP/1.1 protocol specifications</p>
+                </div>
+                <div class="feature-item">
+                    <strong>🖥️ Multi-Server</strong>
+                    <p>Handle multiple server configurations simultaneously</p>
+                </div>
+                <div class="feature-item">
+                    <strong>⚙️ CGI Support</strong>
+                    <p>Execute Python, PHP, and Perl scripts</p>
+                </div>
+                <div class="feature-item">
+                    <strong>📤 File Upload</strong>
+                    <p>Handle file uploads with POST requests</p>
+                </div>
+                <div class="feature-item">
+                    <strong>🔄 Keep-Alive</strong>
+                    <p>Persistent connections for better performance</p>
+                </div>
+                <div class="feature-item">
+                    <strong>🛡️ Custom Errors</strong>
+                    <p>Configurable error pages for all HTTP status codes</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Technology Stack</h2>
+            <p>The server is built using modern C++ with the following technologies:</p>
+            <div class="tech-badges">
+                <span class="badge">C++98</span>
+                <span class="badge">Socket Programming</span>
+                <span class="badge">I/O Multiplexing (poll/kqueue)</span>
+                <span class="badge">HTTP/1.1 Protocol</span>
+                <span class="badge">CGI Interface</span>
+                <span class="badge">Makefile</span>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <a href="/" class="btn btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Home
+            </a>
+            <a href="/documentation.html" class="btn btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Documentation
+            </a>
+            <a href="https://github.com" target="_blank" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub Repository
+            </a>
+        </div>
+        
+        <footer>
+            <div class="server-info">
+                <div>Server: 42 Webserv/1.0</div>
+                <div>Educational Server Implementation</div>
+                <div>HTTP/1.1 • C++98</div>
+            </div>
+            <p>42 Webserv Project • Educational Purpose</p>
+            <p style="font-size: 0.9rem; color: #9ca3af; margin-top: 10px;">
+                Built with C++ • I/O Multiplexing • HTTP/1.1 • CGI
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

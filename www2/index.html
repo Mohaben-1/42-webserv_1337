@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server 2 - 42 Webserv</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .server-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .port-display {
+            background: #f8f9fa;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .port-number {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #667eea;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+        
+        .status {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px 25px;
+            border-radius: 10px;
+            min-width: 150px;
+        }
+        
+        .status-item.active {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .features {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .features ul {
+            list-style: none;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            display: inline-block;
+            width: 25px;
+        }
+        
+        .connection-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 25px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="server-badge">SERVER 2</div>
+        
+        <h1>🚀 42 Webserv - Server Instance</h1>
+        <p style="color: #666; margin-bottom: 30px; font-size: 1.1rem;">
+            Custom HTTP server implementation for 42 School project
+        </p>
+        
+        <div class="port-display">
+            <div style="color: #666; margin-bottom: 10px;">Listening on port</div>
+            <div class="port-number">8081</div>
+            <div style="color: #666; margin-top: 10px;">HTTP/1.1 • Localhost</div>
+        </div>
+        
+        <div class="status">
+            <div class="status-item active">
+                <div style="font-size: 0.9rem; color: #666;">Status</div>
+                <div style="font-weight: bold; color: #155724;">● Running</div>
+            </div>
+            <div class="status-item">
+                <div style="font-size: 0.9rem; color: #666;">Protocol</div>
+                <div style="font-weight: bold;">HTTP/1.1</div>
+            </div>
+        </div>
+        
+        <div class="features">
+            <h3>✨ Server Features</h3>
+            <ul>
+                <li>Multi-server configuration support</li>
+                <li>HTTP/1.1 compliant</li>
+                <li>GET, POST, DELETE methods</li>
+                <li>CGI Script Execution</li>
+                <li>File upload support</li>
+                <li>Custom error pages</li>
+            </ul>
+        </div>
+        
+        <div class="connection-info">
+            <strong>Test this server:</strong><br>
+            <code>curl http://localhost:8081/</code><br>
+        </div>
+        
+        <footer>
+            <p>42 Webserv Project • Server 2 Instance</p>
+            <p>Made with ❤️ by 1337 Students</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Simple connection counter simulation
+        let connections = 0;
+        setInterval(() => {
+            connections = Math.floor(Math.random() * 50) + 1;
+            document.getElementById('connection-count').textContent = connections;
+        }, 2000);
+        
+        // Update time every second
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 
+                now.toLocaleTimeString();
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+    </script>
+</body>
+</html>

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation • 42 Webserv</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --secondary: #10b981;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --gray: #6b7280;
+            --border: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .sidebar h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .sidebar nav ul {
+            list-style: none;
+        }
+        
+        .sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+        
+        .sidebar nav ul li a {
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+            display: block;
+            padding: 5px 0;
+        }
+        
+        .sidebar nav ul li a:hover {
+            color: var(--primary);
+        }
+        
+        .sidebar nav ul li a.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            gap: 12px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .main-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+        
+        h2:first-of-type {
+            margin-top: 20px;
+        }
+        
+        h3 {
+            color: var(--dark);
+            font-size: 1.3rem;
+            margin: 30px 0 15px;
+        }
+        
+        h4 {
+            color: var(--dark);
+            font-size: 1.1rem;
+            margin: 20px 0 10px;
+        }
+        
+        p {
+            color: var(--gray);
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        /* Code Blocks */
+        code {
+            background: var(--light);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--primary);
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        
+        /* Lists */
+        ul, ol {
+            margin: 15px 0 15px 25px;
+            color: var(--gray);
+        }
+        
+        ul li, ol li {
+            margin-bottom: 8px;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        table th {
+            background: var(--light);
+            color: var(--dark);
+            font-weight: 600;
+        }
+        
+        table td {
+            color: var(--gray);
+        }
+        
+        table tr:hover {
+            background: var(--light);
+        }
+        
+        /* Info Boxes */
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .info-box.warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+        
+        .info-box.success {
+            background: #f0fdf4;
+            border-left-color: var(--secondary);
+        }
+        
+        .info-box p {
+            margin: 0;
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: relative;
+                top: 0;
+            }
+            
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <a href="/" class="back-link">← Home</a>
+            <h3>Documentation</h3>
+            <nav>
+                <ul>
+                    <li><a href="#overview" class="active">Overview</a></li>
+                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#configuration">Configuration</a></li>
+                    <li><a href="#http-methods">HTTP Methods</a></li>
+                    <li><a href="#cgi">CGI Scripts</a></li>
+                    <li><a href="#architecture">Architecture</a></li>
+                    <li><a href="#testing">Testing</a></li>
+                    <li><a href="#troubleshooting">Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <!-- Main Documentation Content -->
+        <main class="main-content">
+            <h1>42 Webserv Documentation</h1>
+            <p>Complete guide to understanding, configuring, and using the 42 Webserv HTTP server.</p>
+            
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>42 Webserv is a custom HTTP/1.1 web server implementation written in C++ as part of the 42 School curriculum. It demonstrates low-level networking concepts and HTTP protocol implementation without relying on external HTTP libraries.</p>
+                
+                <h3>Key Features</h3>
+                <ul>
+                    <li><strong>HTTP/1.1 Compliance:</strong> Supports GET, POST, PUT, DELETE, and HEAD methods</li>
+                    <li><strong>I/O Multiplexing:</strong> Uses poll/kqueue for efficient concurrent connection handling</li>
+                    <li><strong>CGI Support:</strong> Execute Python, PHP, and Perl scripts</li>
+                    <li><strong>File Operations:</strong> Upload, download, and delete files</li>
+                    <li><strong>Directory Listing:</strong> Automatic index generation for directories</li>
+                    <li><strong>Configuration:</strong> NGINX-style configuration file support</li>
+                    <li><strong>Error Handling:</strong> Custom error pages and robust request validation</li>
+                </ul>
+                
+                <div class="info-box">
+                    <p><strong>Note:</strong> This server is designed for educational purposes and should not be used in production environments without additional security hardening.</p>
+                </div>
+            </section>
+            
+            <section id="installation">
+                <h2>Installation</h2>
+                
+                <h3>Requirements</h3>
+                <ul>
+                    <li>C++ compiler with C++98 support (g++, clang++)</li>
+                    <li>Make build system</li>
+                    <li>UNIX-like operating system (Linux, macOS)</li>
+                </ul>
+                
+                <h3>Build Instructions</h3>
+                <pre><code># Clone the repository
+git clone https://github.com/yourusername/webserv.git
+cd webserv
+
+# Compile the server
+make
+
+# Run the server with a configuration file
+./webserv config/default.conf</code></pre>
+                
+                <div class="info-box success">
+                    <p><strong>Success!</strong> The server should now be running on the configured port (default: 8080)</p>
+                </div>
+            </section>
+            
+            <section id="configuration">
+                <h2>Configuration</h2>
+                <p>The server uses a configuration file similar to NGINX syntax. Here's an example configuration:</p>
+                
+                <pre><code>server {
+    listen 8080;
+    server_name localhost;
+    root /var/www/html;
+    index index.html;
+    
+    client_max_body_size 10M;
+    
+    location / {
+        allow_methods GET POST;
+        autoindex on;
+    }
+    
+    location /upload {
+        allow_methods GET POST DELETE;
+        upload_path /var/www/uploads;
+    }
+    
+    location /cgi-bin {
+        allow_methods GET POST;
+        cgi_extension .py .php .pl;
+        cgi_path /usr/bin/python3 /usr/bin/php /usr/bin/perl;
+    }
+    
+    error_page 404 /errors/404.html;
+    error_page 500 /errors/500.html;
+}</code></pre>
+                
+                <h3>Configuration Directives</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Directive</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>listen</code></td>
+                            <td>Port number to listen on</td>
+                            <td><code>listen 8080;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>server_name</code></td>
+                            <td>Server hostname</td>
+                            <td><code>server_name localhost;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>root</code></td>
+                            <td>Root directory for serving files</td>
+                            <td><code>root /var/www/html;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>index</code></td>
+                            <td>Default index file</td>
+                            <td><code>index index.html;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>allow_methods</code></td>
+                            <td>Allowed HTTP methods</td>
+                            <td><code>allow_methods GET POST;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>autoindex</code></td>
+                            <td>Enable directory listing</td>
+                            <td><code>autoindex on;</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>client_max_body_size</code></td>
+                            <td>Maximum request body size</td>
+                            <td><code>client_max_body_size 10M;</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="http-methods">
+                <h2>HTTP Methods</h2>
+                
+                <h3>GET</h3>
+                <p>Retrieve resources from the server.</p>
+                <pre><code>curl http://localhost:8080/index.html</code></pre>
+                
+                <h3>POST</h3>
+                <p>Send data to the server, typically for file uploads or form submissions.</p>
+                <pre><code>curl -X POST -F "file=@document.pdf" http://localhost:8080/upload</code></pre>
+                
+                <h3>DELETE</h3>
+                <p>Remove a resource from the server.</p>
+                <pre><code>curl -X DELETE http://localhost:8080/files/document.pdf</code></pre>
+                
+                <h3>PUT</h3>
+                <p>Update or create a resource at a specific URI.</p>
+                <pre><code>curl -X PUT -d "content" http://localhost:8080/files/data.txt</code></pre>
+                
+                <h3>HEAD</h3>
+                <p>Retrieve headers without the response body.</p>
+                <pre><code>curl -I http://localhost:8080/index.html</code></pre>
+                
+                <div class="info-box warning">
+                    <p><strong>Security:</strong> DELETE and PUT methods should be restricted in production to prevent unauthorized modifications.</p>
+                </div>
+            </section>
+            
+            <section id="cgi">
+                <h2>CGI Scripts</h2>
+                <p>The server supports Common Gateway Interface (CGI) for executing server-side scripts.</p>
+                
+                <h3>Supported Languages</h3>
+                <ul>
+                    <li>Python (.py)</li>
+                    <li>PHP (.php)</li>
+                    <li>Perl (.pl)</li>
+                </ul>
+                
+                <h3>Example Python CGI Script</h3>
+                <pre><code>#!/usr/bin/env python3
+import os
+
+print("Content-Type: text/html\n")
+print("&lt;html&gt;")
+print("&lt;h1&gt;Hello from Python CGI&lt;/h1&gt;")
+print(f"&lt;p&gt;Query String: {os.environ.get('QUERY_STRING', 'None')}&lt;/p&gt;")
+print("&lt;/html&gt;")</code></pre>
+                
+                <h3>CGI Environment Variables</h3>
+                <p>The server provides standard CGI environment variables:</p>
+                <ul>
+                    <li><code>REQUEST_METHOD</code> - HTTP method (GET, POST, etc.)</li>
+                    <li><code>QUERY_STRING</code> - URL query parameters</li>
+                    <li><code>CONTENT_TYPE</code> - Request content type</li>
+                    <li><code>CONTENT_LENGTH</code> - Request body length</li>
+                    <li><code>SERVER_PROTOCOL</code> - HTTP version</li>
+                    <li><code>PATH_INFO</code> - Path information</li>
+                </ul>
+            </section>
+            
+            <section id="architecture">
+                <h2>Architecture</h2>
+                
+                <h3>Request Processing Flow</h3>
+                <ol>
+                    <li><strong>Connection Acceptance:</strong> poll/kqueue monitors socket for incoming connections</li>
+                    <li><strong>Request Parsing:</strong> HTTP request is parsed and validated</li>
+                    <li><strong>Route Matching:</strong> Request URI is matched against configured locations</li>
+                    <li><strong>Method Validation:</strong> Verify the HTTP method is allowed</li>
+                    <li><strong>Resource Handling:</strong> Execute appropriate handler (static file, CGI, upload, etc.)</li>
+                    <li><strong>Response Generation:</strong> Build HTTP response with headers and body</li>
+                    <li><strong>Response Sending:</strong> Send response back to client</li>
+                </ol>
+                
+                <h3>Core Components</h3>
+                <ul>
+                    <li><strong>Server:</strong> Main event loop using I/O multiplexing</li>
+                    <li><strong>Config Parser:</strong> Reads and validates configuration files</li>
+                    <li><strong>Request Handler:</strong> Processes incoming HTTP requests</li>
+                    <li><strong>Response Builder:</strong> Constructs HTTP responses</li>
+                    <li><strong>CGI Executor:</strong> Manages CGI script execution</li>
+                    <li><strong>File Manager:</strong> Handles file operations (read, write, delete)</li>
+                </ul>
+            </section>
+            
+            <section id="testing">
+                <h2>Testing</h2>
+                
+                <h3>Manual Testing with curl</h3>
+                <pre><code># Test GET request
+curl -v http://localhost:8080/
+
+# Test POST with data
+curl -X POST -d "key=value" http://localhost:8080/upload
+
+# Test file upload
+curl -F "file=@test.pdf" http://localhost:8080/upload
+
+# Test DELETE
+curl -X DELETE http://localhost:8080/files/test.txt
+
+# Test HEAD request
+curl -I http://localhost:8080/</code></pre>
+                
+                <h3>Stress Testing with Siege</h3>
+                <p>Use Siege to perform comprehensive stress tests on your server. The server must meet these requirements:</p>
+                
+                <div class="info-box">
+                    <p><strong>Performance Requirements:</strong></p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Availability must be above 99.5% for simple GET requests</li>
+                        <li>No memory leaks (memory usage should remain stable)</li>
+                        <li>No hanging connections</li>
+                        <li>Server should handle indefinite siege runs without restart</li>
+                    </ul>
+                </div>
+                
+                <h4>Basic Siege Commands</h4>
+                <pre><code># Install Siege (if not already installed)
+# macOS: brew install siege
+# Linux: sudo apt-get install siege
+
+# Run benchmark mode on empty page
+siege -b http://localhost:8080/
+
+# Run for specific duration
+siege -b -t30s http://localhost:8080/
+
+# Run with specific number of concurrent users
+siege -b -c50 -t60s http://localhost:8080/
+
+# Run indefinitely (Ctrl+C to stop)
+siege -b -c25 http://localhost:8080/</code></pre>
+
+                <h4>Monitoring Server Health</h4>
+                <p>While Siege is running, monitor your server in a separate terminal:</p>
+                <pre><code># Monitor memory usage (should not increase indefinitely)
+watch -n 1 'ps aux | grep webserv | grep -v grep'
+
+# Check for hanging connections
+netstat -an | grep :8080 | grep ESTABLISHED | wc -l
+
+# On macOS, use lsof instead
+lsof -i :8080 | grep ESTABLISHED | wc -l</code></pre>
+
+                <h4>Interpreting Results</h4>
+                <p>Siege will provide a report including:</p>
+                <ul>
+                    <li><strong>Availability:</strong> Must be &gt; 99.5%</li>
+                    <li><strong>Response time:</strong> Average time to respond</li>
+                    <li><strong>Transaction rate:</strong> Requests per second</li>
+                    <li><strong>Throughput:</strong> Data transferred per second</li>
+                    <li><strong>Successful transactions:</strong> Total successful requests</li>
+                    <li><strong>Failed transactions:</strong> Should be minimal</li>
+                </ul>
+                
+                <div class="info-box warning">
+                    <p><strong>Warning:</strong> If availability drops below 99.5%, investigate connection handling, timeout settings, and resource limits in your server implementation.</p>
+                </div>
+            </section>
+            
+            <section id="troubleshooting">
+                <h2>Troubleshooting</h2>
+                
+                <h3>Common Issues</h3>
+                
+                <h4>Port Already in Use</h4>
+                <p><strong>Symptom:</strong> Server fails to start with "Address already in use" error</p>
+                <p><strong>Solution:</strong> Change the port in configuration or kill the process using the port</p>
+                <pre><code># Find process using port 8080
+lsof -i :8080
+
+# Kill the process
+kill -9 &lt;PID&gt;</code></pre>
+                
+                <h4>Permission Denied</h4>
+                <p><strong>Symptom:</strong> Cannot read files or execute CGI scripts</p>
+                <p><strong>Solution:</strong> Ensure proper file permissions and that CGI scripts are executable</p>
+                <pre><code>chmod +x cgi-bin/*.py
+chmod 755 www/</code></pre>
+                
+                <h4>413 Request Entity Too Large</h4>
+                <p><strong>Symptom:</strong> File uploads fail for large files</p>
+                <p><strong>Solution:</strong> Increase <code>client_max_body_size</code> in configuration</p>
+                
+                <div class="info-box">
+                    <p><strong>Debugging Tip:</strong> Enable verbose logging in the server configuration to see detailed request/response information.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Update active link
+                    document.querySelectorAll('.sidebar nav a').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                }
+            });
+        });
+        
+        // Highlight current section on scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.sidebar nav a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (window.pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
