@@ -38,38 +38,18 @@ private:
     // Additional HTTP headers to pass to CGI
     std::map<std::string, std::string> http_headers;
     
-    // Timeout in seconds
-    int timeout_seconds;
-    
-    // Output from CGI
-    std::string cgi_output;
     CGIStatus status;
     
     // Internal methods
     char** buildEnvArray() const;
     void freeEnvArray(char** env) const;
     std::string extractPathInfo(const std::string& url, const std::string& script) const;
-    bool parseOutput(Response& response) const;
     
 public:
     CGI();
     ~CGI();
     
     // Configuration
-    void setScriptPath(const std::string& path);
-    void setInterpreter(const std::string& interpreter);
-    void setQueryString(const std::string& qs);
-    void setRequestMethod(const std::string& method);
-    void setContentType(const std::string& ct);
-    void setContentLength(size_t len);
-    void setRequestBody(const std::string& body);
-    void setServerName(const std::string& name);
-    void setServerPort(int port);
-    void setScriptName(const std::string& name);
-    void setPathInfo(const std::string& info);
-    void setDocumentRoot(const std::string& root);
-    void setRemoteAddr(const std::string& addr);
-    void setTimeout(int seconds);
     void addHttpHeader(const std::string& key, const std::string& value);
     
     // Setup from Request object
@@ -77,15 +57,17 @@ public:
                           const std::string& interpreter, const std::string& doc_root,
                           int port, const std::string& server_name = "localhost");
     
-    // Execute CGI script
-    CGIStatus execute();
     
-    // Get results
-    CGIStatus getStatus() const { return status; }
-    const std::string& getOutput() const { return cgi_output; }
+    // Non-blocking CGI execution for poll integration
+    // Returns CGI_SUCCESS if fork succeeded, stores pipe fds and pid
+    // Caller must handle pipe I/O through poll() and call finishAsync() when done
+    CGIStatus executeCgi(int& stdin_fd, int& stdout_fd, pid_t& pid);
     
-    // Build Response from CGI output
-    Response buildResponse() const;
+    // Build response from externally collected output
+    Response buildResponseFromOutput(const std::string& output) const;
+    
+    // Parse CGI output into response (public for async use)
+    bool parseOutputString(const std::string& output, Response& response) const;
     
     // Static utility
     static bool isCGIRequest(const std::string& path, const std::string& extension);

@@ -80,76 +80,6 @@ void Server::stop() {
     }
 }
 
-Response Server::handleRequest(const Request& req) {
-    // Find matching location
-    const LocationConfig* location = findLocation(req.getPath());
-    
-    // Check for HTTP redirection first
-    if (location && location->redirect_code > 0 && !location->redirect_url.empty()) {
-        return serveRedirect(location->redirect_code, location->redirect_url);
-    }
-    
-    // Check if method is allowed
-    if (!isMethodAllowed(req.getMethod(), location)) {
-        return serve405();
-    }
-    
-    // Check body size limits for POST
-    if (req.getMethod() == "POST") {
-        size_t max_size = config.client_max_body_size;
-        if (location && location->client_max_body_size > 0) {
-            max_size = location->client_max_body_size;
-        }
-        if (req.getContentLength() > max_size) {
-            return serve413();
-        }
-    }
-    
-    // Check for CGI request (supports multiple CGI types)
-    if (location && !location->cgi_handlers.empty()) {
-        // Extract file extension from path
-        std::string path = req.getPath();
-        size_t query_pos = path.find('?');
-        if (query_pos != std::string::npos) {
-            path = path.substr(0, query_pos);
-        }
-        
-        // Check each registered CGI extension
-        for (std::map<std::string, std::string>::const_iterator it = location->cgi_handlers.begin();
-             it != location->cgi_handlers.end(); ++it) {
-            if (CGI::isCGIRequest(path, it->first)) {
-                return handleCGI(req, location, it->first, it->second);
-            }
-        }
-    }
-    
-    // Handle POST requests (non-CGI)
-    if (req.getMethod() == "POST") {
-        return handlePost(req, location);
-    }
-    
-    // Handle DELETE requests
-    if (req.getMethod() == "DELETE") {
-        return handleDelete(req, location);
-    }
-    
-    // Build file path for GET
-    std::string file_path = buildFilePath(req.getPath(), location);
-    
-    // Check if path exists
-    if (!fileExists(file_path)) {
-        return serve404();
-    }
-    
-    // Check if it's a directory
-    if (isDirectory(file_path)) {
-        return serveDirectory(file_path, location);
-    }
-    
-    // It's a file, serve it
-    return serveFile(file_path, location);
-}
-
 const LocationConfig* Server::findLocation(const std::string& path) const {
     const LocationConfig* best_match = NULL;
     size_t best_match_len = 0;
@@ -458,54 +388,106 @@ std::string Server::generateFilename() const {
     return oss.str();
 }
 
-Response Server::handleCGI(const Request& req, const LocationConfig* location,
-                           const std::string& cgi_extension, const std::string& cgi_path) {
-    // Get the correct document root (location root or server root)
-    std::string doc_root = config.root;
-    std::string url_path = req.getPath();
+bool Server::isCGIRequest(const Request& req, CGIInfo& info) {
+    // Find matching location
+    const LocationConfig* location = findLocation(req.getPath());
     
-    // If location has a custom root, use it and adjust the path
-    if (location && !location->root.empty()) {
-        doc_root = location->root;
-        // Remove the location path prefix from URL to get relative path
-        if (url_path.find(location->path) == 0) {
-            url_path = url_path.substr(location->path.length());
-            if (url_path.empty() || url_path[0] != '/') {
-                url_path = "/" + url_path;
+    // Check for CGI handlers
+    if (!location || location->cgi_handlers.empty()) {
+        return false;
+    }
+    
+    // Extract file extension from path
+    std::string path = req.getPath();
+    size_t query_pos = path.find('?');
+    if (query_pos != std::string::npos) {
+        path = path.substr(0, query_pos);
+    }
+    
+    // Check each registered CGI extension
+    for (std::map<std::string, std::string>::const_iterator it = location->cgi_handlers.begin();
+         it != location->cgi_handlers.end(); ++it) {
+        if (CGI::isCGIRequest(path, it->first)) {
+            // Populate CGI info
+            info.cgi_extension = it->first;
+            info.interpreter = it->second;
+            info.location = location;
+            
+            // Get the correct document root
+            std::string doc_root = config.root;
+            std::string url_path = req.getPath();
+            
+            // If location has a custom root, use it and adjust the path
+            if (!location->root.empty()) {
+                doc_root = location->root;
+                if (url_path.find(location->path) == 0) {
+                    url_path = url_path.substr(location->path.length());
+                    if (url_path.empty() || url_path[0] != '/') {
+                        url_path = "/" + url_path;
+                    }
+                }
             }
+            
+            info.doc_root = doc_root;
+            info.script_path = CGI::getScriptPath(url_path, doc_root, it->first);
+            
+            return true;
         }
     }
     
-    // Get the script path using adjusted root and path
-    std::string script_path = CGI::getScriptPath(url_path, doc_root, cgi_extension);
+    return false;
+}
+
+Response Server::handleNonCGIRequest(const Request& req) {
+    // Find matching location
+    const LocationConfig* location = findLocation(req.getPath());
     
-    // Check if script exists
-    struct stat st;
-    if (stat(script_path.c_str(), &st) != 0) {
+    // Check for HTTP redirection first
+    if (location && location->redirect_code > 0 && !location->redirect_url.empty()) {
+        return serveRedirect(location->redirect_code, location->redirect_url);
+    }
+    
+    // Check if method is allowed
+    if (!isMethodAllowed(req.getMethod(), location)) {
+        return serve405();
+    }
+    
+    // Check body size limits for POST
+    if (req.getMethod() == "POST") {
+        size_t max_size = config.client_max_body_size;
+        if (location && location->client_max_body_size > 0) {
+            max_size = location->client_max_body_size;
+        }
+        if (req.getContentLength() > max_size) {
+            return serve413();
+        }
+    }
+    
+    // Handle POST requests (non-CGI)
+    if (req.getMethod() == "POST") {
+        return handlePost(req, location);
+    }
+    
+    // Handle DELETE requests
+    if (req.getMethod() == "DELETE") {
+        return handleDelete(req, location);
+    }
+    
+    // Build file path for GET
+    std::string file_path = buildFilePath(req.getPath(), location);
+    
+    // Check if path exists
+    if (!fileExists(file_path)) {
         return serve404();
     }
     
-    // Check if script is executable (for direct execution without interpreter)
-    if (cgi_path.empty() && !(st.st_mode & S_IXUSR)) {
-        return serve403();
+    // Check if it's a directory
+    if (isDirectory(file_path)) {
+        return serveDirectory(file_path, location);
     }
     
-    // Create CGI handler
-    CGI cgi;
-    
-    // Setup CGI from request
-    cgi.setupFromRequest(req, script_path, cgi_path, doc_root, 
-                         config.port, config.server_name);
-    
-    // Set timeout (30 seconds default)
-    cgi.setTimeout(30);
-    
-    // Execute CGI script
-    CGIStatus status = cgi.execute();
-    (void)status;
-    
-    // Build and return response
-    return cgi.buildResponse();
+    // It's a file, serve it
+    return serveFile(file_path, location);
 }
 
 Response Server::handlePost(const Request& req, const LocationConfig* location) {

@@ -3,6 +3,9 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <signal.h>
 #include <cstring>
 #include <fcntl.h>
 #include <errno.h>
@@ -81,7 +84,51 @@ void ServerManager::run() {
             int fd = poll_fds[i].fd;
             short revents = poll_fds[i].revents;
             
-            // Handle errors and hangups
+            // Check if this is a CGI pipe fd
+            std::map<int, int>::iterator cgi_it = cgi_fd_to_client.find(fd);
+            if (cgi_it != cgi_fd_to_client.end()) {
+                int client_fd = cgi_it->second;
+                std::map<int, ClientState>::iterator state_it = client_states.find(client_fd);
+                if (state_it == client_states.end()) {
+                    // Client gone, cleanup CGI
+                    removePollFd(fd);
+                    close(fd);
+                    cgi_fd_to_client.erase(cgi_it);
+                    continue;
+                }
+                
+                ClientState& state = state_it->second;
+                
+                // Handle CGI pipe errors/hangup
+                if (revents & (POLLERR | POLLNVAL)) {
+                    finishCGI(client_fd, false);
+                    continue;
+                }
+                
+                // Handle CGI stdout read (POLLIN)
+                if ((revents & POLLIN) && fd == state.cgi_stdout_fd) {
+                    handleCGIRead(fd);
+                    continue;
+                }
+                
+                // Handle POLLHUP on CGI stdout (CGI process finished)
+                if ((revents & POLLHUP) && fd == state.cgi_stdout_fd) {
+                    // Read any remaining data first
+                    handleCGIRead(fd);
+                    finishCGI(client_fd, true);
+                    continue;
+                }
+                
+                // Handle CGI stdin write (POLLOUT)
+                if ((revents & POLLOUT) && fd == state.cgi_stdin_fd) {
+                    handleCGIWrite(fd);
+                    continue;
+                }
+                
+                continue;
+            }
+            
+            // Handle errors and hangups on non-CGI fds
             if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 if (server_fds.find(fd) == server_fds.end()) {
                     // Client socket error
@@ -151,6 +198,11 @@ void ServerManager::handleClientRequest(int client_fd) {
     
     // If response is already ready, don't read more (wait for write to complete)
     if (it->second.response_ready) {
+        return;
+    }
+    
+    // If CGI is in progress, don't read from client (wait for CGI to complete)
+    if (it->second.cgi_in_progress) {
         return;
     }
     
@@ -232,8 +284,23 @@ void ServerManager::handleClientRequest(int client_fd) {
     std::cout << "[" << server->getConfig().server_name << ":" << server->getPort() 
               << "] " << req.getMethod() << " " << req.getPath() << std::endl;
     
-    // Get the response from server (don't send directly)
-    Response response = server->handleRequest(req);
+    // Check if this is a CGI request
+    CGIInfo cgi_info;
+    if (server->isCGIRequest(req, cgi_info)) {
+        // Start async CGI execution
+        if (!startCGI(client_fd, req, server, cgi_info.location, cgi_info.cgi_extension, cgi_info.interpreter)) {
+            // CGI failed to start, send error response
+            Response res;
+            res.setStatus(500, "Internal Server Error");
+            res.setHeader("Content-Type", "text/html");
+            res.setBody("<html><body><h1>500 Internal Server Error</h1><p>CGI execution failed</p></body></html>");
+            queueResponse(client_fd, res.toString());
+        }
+        return;
+    }
+    
+    // Non-CGI request: get the response from server
+    Response response = server->handleNonCGIRequest(req);
     
     // Queue the response to be sent when POLLOUT is ready
     queueResponse(client_fd, response.toString());
@@ -311,6 +378,9 @@ void ServerManager::updatePollEvents(int fd, short events) {
 }
 
 void ServerManager::closeClient(int client_fd) {
+    // Cleanup any ongoing CGI first
+    cleanupCGI(client_fd);
+    
     removePollFd(client_fd);
     fd_to_server.erase(client_fd);
     client_states.erase(client_fd);
@@ -320,13 +390,26 @@ void ServerManager::closeClient(int client_fd) {
 void ServerManager::checkTimeouts() {
     time_t now = time(NULL);
     std::vector<int> to_close;
+    std::vector<int> cgi_timeout;
     
-    // Find all timed-out connections
+    // Find all timed-out connections and CGI processes
     for (std::map<int, ClientState>::iterator it = client_states.begin();
          it != client_states.end(); ++it) {
+        // Check connection timeout
         if (now - it->second.last_activity > CONNECTION_TIMEOUT) {
             to_close.push_back(it->first);
         }
+        // Check CGI timeout
+        else if (it->second.cgi_in_progress && 
+                 now - it->second.cgi_start_time > CGI_TIMEOUT) {
+            cgi_timeout.push_back(it->first);
+        }
+    }
+    
+    // Handle CGI timeouts
+    for (size_t i = 0; i < cgi_timeout.size(); i++) {
+        std::cerr << "CGI timeout for client " << cgi_timeout[i] << std::endl;
+        finishCGI(cgi_timeout[i], false);
     }
     
     // Close timed-out connections
@@ -405,4 +488,239 @@ int ServerManager::findServerByHost(const std::string& host, int port) const {
     return first_match_on_port;
 }
 
+// Start async CGI execution - returns true if CGI started successfully
+bool ServerManager::startCGI(int client_fd, const Request& req, Server* server,
+                              const LocationConfig* location, const std::string& extension,
+                              const std::string& interpreter) {
+    std::map<int, ClientState>::iterator it = client_states.find(client_fd);
+    if (it == client_states.end()) {
+        return false;
+    }
+    
+    ClientState& state = it->second;
+    
+    // Get document root and script path
+    std::string doc_root = server->getConfig().root;
+    std::string url_path = req.getPath();
+    
+    if (location && !location->root.empty()) {
+        doc_root = location->root;
+        if (url_path.find(location->path) == 0) {
+            url_path = url_path.substr(location->path.length());
+            if (url_path.empty() || url_path[0] != '/') {
+                url_path = "/" + url_path;
+            }
+        }
+    }
+    
+    std::string script_path = CGI::getScriptPath(url_path, doc_root, extension);
+    
+    // Check if script exists
+    struct stat st;
+    if (stat(script_path.c_str(), &st) != 0) {
+        return false;
+    }
+    
+    // Create CGI handler
+    CGI* cgi = new CGI();
+    cgi->setupFromRequest(req, script_path, interpreter, doc_root,
+                          server->getPort(), server->getServerName());
+    
+    // Start async CGI execution
+    int stdin_fd = -1, stdout_fd = -1;
+    pid_t pid = -1;
+    
+    CGIStatus status = cgi->executeCgi(stdin_fd, stdout_fd, pid);
+    if (status != CGI_SUCCESS) {
+        delete cgi;
+        return false;
+    }
+    
+    // Store CGI state
+    state.cgi_in_progress = true;
+    state.cgi_stdin_fd = stdin_fd;
+    state.cgi_stdout_fd = stdout_fd;
+    state.cgi_pid = pid;
+    state.cgi_input = req.getBody();
+    state.cgi_input_sent = 0;
+    state.cgi_output.clear();
+    state.cgi_start_time = time(NULL);
+    state.cgi_handler = cgi;
+    
+    // Register CGI pipes with poll
+    // stdout for reading CGI output
+    addPollFd(stdout_fd, POLLIN);
+    cgi_fd_to_client[stdout_fd] = client_fd;
+    
+    // stdin for writing POST data (only if there's data to write)
+    if (!state.cgi_input.empty()) {
+        addPollFd(stdin_fd, POLLOUT);
+        cgi_fd_to_client[stdin_fd] = client_fd;
+    } else {
+        // No input data, close stdin immediately
+        close(stdin_fd);
+        state.cgi_stdin_fd = -1;
+    }
+    
+    return true;
+}
 
+// Handle writing POST data to CGI stdin
+void ServerManager::handleCGIWrite(int cgi_stdin_fd) {
+    std::map<int, int>::iterator cgi_it = cgi_fd_to_client.find(cgi_stdin_fd);
+    if (cgi_it == cgi_fd_to_client.end()) {
+        return;
+    }
+    
+    int client_fd = cgi_it->second;
+    std::map<int, ClientState>::iterator it = client_states.find(client_fd);
+    if (it == client_states.end()) {
+        return;
+    }
+    
+    ClientState& state = it->second;
+    
+    // Calculate remaining data to write
+    size_t remaining = state.cgi_input.length() - state.cgi_input_sent;
+    if (remaining == 0) {
+        // All data sent, close stdin to signal EOF to CGI
+        removePollFd(cgi_stdin_fd);
+        cgi_fd_to_client.erase(cgi_stdin_fd);
+        close(cgi_stdin_fd);
+        state.cgi_stdin_fd = -1;
+        return;
+    }
+    
+    // Write data (one write per poll cycle)
+    const char* data = state.cgi_input.c_str() + state.cgi_input_sent;
+    ssize_t bytes_written = write(cgi_stdin_fd, data, remaining);
+    
+    if (bytes_written <= 0) {
+        // Error or would-block, close stdin
+        removePollFd(cgi_stdin_fd);
+        cgi_fd_to_client.erase(cgi_stdin_fd);
+        close(cgi_stdin_fd);
+        state.cgi_stdin_fd = -1;
+        return;
+    }
+    
+    state.cgi_input_sent += bytes_written;
+    
+    // Check if all data sent
+    if (state.cgi_input_sent >= state.cgi_input.length()) {
+        removePollFd(cgi_stdin_fd);
+        cgi_fd_to_client.erase(cgi_stdin_fd);
+        close(cgi_stdin_fd);
+        state.cgi_stdin_fd = -1;
+    }
+}
+
+// Handle reading CGI output
+void ServerManager::handleCGIRead(int cgi_stdout_fd) {
+    std::map<int, int>::iterator cgi_it = cgi_fd_to_client.find(cgi_stdout_fd);
+    if (cgi_it == cgi_fd_to_client.end()) {
+        return;
+    }
+    
+    int client_fd = cgi_it->second;
+    std::map<int, ClientState>::iterator it = client_states.find(client_fd);
+    if (it == client_states.end()) {
+        return;
+    }
+    
+    ClientState& state = it->second;
+    
+    // Read data (one read per poll cycle)
+    char buffer[4096];
+    ssize_t bytes_read = read(cgi_stdout_fd, buffer, sizeof(buffer) - 1);
+    
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+        state.cgi_output += buffer;
+    } else if (bytes_read == 0) {
+        // EOF - CGI finished writing
+        finishCGI(client_fd, true);
+    }
+    // bytes_read < 0: would-block, wait for next poll
+}
+
+// Finish CGI execution and send response
+void ServerManager::finishCGI(int client_fd, bool success) {
+    std::map<int, ClientState>::iterator it = client_states.find(client_fd);
+    if (it == client_states.end()) {
+        return;
+    }
+    
+    ClientState& state = it->second;
+    
+    if (!state.cgi_in_progress) {
+        return;
+    }
+    
+    // Wait for child process to finish (non-blocking check)
+    if (state.cgi_pid > 0) {
+        int child_status;
+        pid_t result = waitpid(state.cgi_pid, &child_status, WNOHANG);
+        if (result == 0) {
+            // Child still running, kill it
+            kill(state.cgi_pid, SIGKILL);
+            waitpid(state.cgi_pid, &child_status, 0);
+        }
+    }
+    
+    // Build response
+    Response response;
+    if (success && state.cgi_handler && !state.cgi_output.empty()) {
+        response = state.cgi_handler->buildResponseFromOutput(state.cgi_output);
+    } else {
+        response.setStatus(500, "Internal Server Error");
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>500 Internal Server Error</h1><p>CGI execution failed</p></body></html>");
+    }
+    
+    // Queue response
+    queueResponse(client_fd, response.toString());
+    
+    // Cleanup CGI state
+    cleanupCGI(client_fd);
+}
+
+// Cleanup CGI resources
+void ServerManager::cleanupCGI(int client_fd) {
+    std::map<int, ClientState>::iterator it = client_states.find(client_fd);
+    if (it == client_states.end()) {
+        return;
+    }
+    
+    ClientState& state = it->second;
+    
+    // Remove and close CGI stdout pipe
+    if (state.cgi_stdout_fd >= 0) {
+        removePollFd(state.cgi_stdout_fd);
+        cgi_fd_to_client.erase(state.cgi_stdout_fd);
+        close(state.cgi_stdout_fd);
+        state.cgi_stdout_fd = -1;
+    }
+    
+    // Remove and close CGI stdin pipe
+    if (state.cgi_stdin_fd >= 0) {
+        removePollFd(state.cgi_stdin_fd);
+        cgi_fd_to_client.erase(state.cgi_stdin_fd);
+        close(state.cgi_stdin_fd);
+        state.cgi_stdin_fd = -1;
+    }
+    
+    // Delete CGI handler
+    if (state.cgi_handler) {
+        delete state.cgi_handler;
+        state.cgi_handler = NULL;
+    }
+    
+    // Reset CGI state
+    state.cgi_in_progress = false;
+    state.cgi_pid = -1;
+    state.cgi_input.clear();
+    state.cgi_input_sent = 0;
+    state.cgi_output.clear();
+    state.cgi_start_time = 0;
+}

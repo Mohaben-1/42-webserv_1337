@@ -11,24 +11,9 @@
 #include <sstream>
 #include <climits>
 
-CGI::CGI() : content_length(0), server_port(80), timeout_seconds(30), status(CGI_SUCCESS) {}
+CGI::CGI() : content_length(0), server_port(80), status(CGI_SUCCESS) {}
 
 CGI::~CGI() {}
-
-void CGI::setScriptPath(const std::string& path) { script_path = path; }
-void CGI::setInterpreter(const std::string& interpreter) { cgi_interpreter = interpreter; }
-void CGI::setQueryString(const std::string& qs) { query_string = qs; }
-void CGI::setRequestMethod(const std::string& method) { request_method = method; }
-void CGI::setContentType(const std::string& ct) { content_type = ct; }
-void CGI::setContentLength(size_t len) { content_length = len; }
-void CGI::setRequestBody(const std::string& body) { request_body = body; }
-void CGI::setServerName(const std::string& name) { server_name = name; }
-void CGI::setServerPort(int port) { server_port = port; }
-void CGI::setScriptName(const std::string& name) { script_name = name; }
-void CGI::setPathInfo(const std::string& info) { path_info = info; }
-void CGI::setDocumentRoot(const std::string& root) { document_root = root; }
-void CGI::setRemoteAddr(const std::string& addr) { remote_addr = addr; }
-void CGI::setTimeout(int seconds) { timeout_seconds = seconds; }
 
 void CGI::addHttpHeader(const std::string& key, const std::string& value) {
     // Convert header name to CGI format: HTTP_HEADER_NAME
@@ -190,11 +175,15 @@ void CGI::freeEnvArray(char** env) const {
     delete[] env;
 }
 
-CGIStatus CGI::execute() {
-    cgi_output.clear();
+
+// Non-blocking CGI start for poll() integration
+CGIStatus CGI::executeCgi(int& stdin_fd, int& stdout_fd, pid_t& child_pid) {
     status = CGI_SUCCESS;
+    stdin_fd = -1;
+    stdout_fd = -1;
+    child_pid = -1;
     
-    // Check if script exists and is executable
+    // Check if script exists
     struct stat st;
     if (stat(script_path.c_str(), &st) != 0) {
         std::cerr << "CGI Error: Script not found: " << script_path << std::endl;
@@ -267,16 +256,14 @@ CGIStatus CGI::execute() {
         // Build environment
         char** env = buildEnvArray();
         
-        // Build argv - use just the filename since we chdir'd to script directory
+        // Build argv
         char* argv[3];
         if (!cgi_interpreter.empty()) {
-            // Use interpreter (e.g., python3 script.py)
             argv[0] = const_cast<char*>(cgi_interpreter.c_str());
             argv[1] = const_cast<char*>(script_filename.c_str());
             argv[2] = NULL;
             execve(cgi_interpreter.c_str(), argv, env);
         } else {
-            // Execute script directly - use ./script for current directory
             std::string exec_path = "./" + script_filename;
             argv[0] = const_cast<char*>(exec_path.c_str());
             argv[1] = NULL;
@@ -295,83 +282,19 @@ CGIStatus CGI::execute() {
     close(pipe_in[0]);   // Close read end of input pipe
     close(pipe_out[1]);  // Close write end of output pipe
     
-    // Send request body to CGI (for POST requests)
-    if (!request_body.empty()) {
-        ssize_t written = write(pipe_in[1], request_body.c_str(), request_body.length());
-        if (written <= 0) {
-            std::cerr << "CGI Error: Failed to write to CGI stdin" << std::endl;
-        }
-    }
-    close(pipe_in[1]);  // Close write end to signal EOF to CGI
-    
-    // Read output from CGI with timeout
-    char buffer[4096];
-    ssize_t bytes_read;
-    
-    // Set up timeout using alarm or select
-    time_t start_time = time(NULL);
-    
-    // Set non-blocking on output pipe (only F_SETFL and O_NONBLOCK allowed on macOS)
+    // Set pipes to non-blocking for poll() integration
+    fcntl(pipe_in[1], F_SETFL, O_NONBLOCK);
     fcntl(pipe_out[0], F_SETFL, O_NONBLOCK);
     
-    while (true) {
-        // Check timeout
-        if (time(NULL) - start_time > timeout_seconds) {
-            std::cerr << "CGI Error: Timeout after " << timeout_seconds << " seconds" << std::endl;
-            kill(pid, SIGKILL);
-            close(pipe_out[0]);
-            waitpid(pid, NULL, 0);
-            status = CGI_ERROR_TIMEOUT;
-            return status;
-        }
-        
-        bytes_read = read(pipe_out[0], buffer, sizeof(buffer) - 1);
-        
-        if (bytes_read > 0) {
-            buffer[bytes_read] = '\0';
-            cgi_output += buffer;
-        } else if (bytes_read == 0) {
-            // EOF - CGI finished
-            break;
-        } else {
-            // bytes_read < 0: For non-blocking pipe, this means no data yet
-            // Check if child is still running
-            int child_status;
-            pid_t result = waitpid(pid, &child_status, WNOHANG);
-            if (result == pid) {
-                // Child exited, read any remaining data
-                while ((bytes_read = read(pipe_out[0], buffer, sizeof(buffer) - 1)) > 0) {
-                    buffer[bytes_read] = '\0';
-                    cgi_output += buffer;
-                }
-                break;
-            }
-            usleep(10000);  // Sleep 10ms and retry
-            continue;
-        }
-    }
-    
-    close(pipe_out[0]);
-    
-    // Wait for child to finish
-    int child_status;
-    waitpid(pid, &child_status, 0);
-    
-    if (WIFSIGNALED(child_status)) {
-        std::cerr << "CGI terminated by signal: " << WTERMSIG(child_status) << std::endl;
-        status = CGI_ERROR_EXEC;
-    } else if (WIFEXITED(child_status) && WEXITSTATUS(child_status) != 0) {
-        // Script exited with non-zero status (e.g., syntax error)
-        std::cerr << "CGI exited with status: " << WEXITSTATUS(child_status) << std::endl;
-        if (cgi_output.empty()) {
-            status = CGI_ERROR_EXEC;
-        }
-    }
+    // Return pipe fds and pid to caller (ServerManager will handle I/O through poll)
+    stdin_fd = pipe_in[1];
+    stdout_fd = pipe_out[0];
+    child_pid = pid;
     
     return status;
 }
 
-bool CGI::parseOutput(Response& response) const {
+bool CGI::parseOutputString(const std::string& output, Response& response) const {
     // CGI output format:
     // Header1: value\r\n
     // Header2: value\r\n
@@ -379,26 +302,26 @@ bool CGI::parseOutput(Response& response) const {
     // Body content...
     
     // Find end of headers (blank line)
-    size_t header_end = cgi_output.find("\r\n\r\n");
+    size_t header_end = output.find("\r\n\r\n");
     if (header_end == std::string::npos) {
         // Try with just \n\n
-        header_end = cgi_output.find("\n\n");
+        header_end = output.find("\n\n");
         if (header_end == std::string::npos) {
             // No headers found, treat entire output as body
-            response.setBody(cgi_output);
+            response.setBody(output);
             response.setHeader("Content-Type", "text/html");
             return true;
         }
     }
     
     // Parse headers
-    std::string headers_section = cgi_output.substr(0, header_end);
+    std::string headers_section = output.substr(0, header_end);
     std::string body;
     
-    if (cgi_output[header_end] == '\r') {
-        body = cgi_output.substr(header_end + 4);
+    if (output[header_end] == '\r') {
+        body = output.substr(header_end + 4);
     } else {
-        body = cgi_output.substr(header_end + 2);
+        body = output.substr(header_end + 2);
     }
     
     // Parse each header line
@@ -428,11 +351,9 @@ bool CGI::parseOutput(Response& response) const {
             
             // Handle special headers
             if (key == "Status") {
-                // Parse "Status: 200 OK" or "Status: 404 Not Found"
                 std::istringstream status_stream(value);
                 status_stream >> status_code;
                 std::getline(status_stream, status_message);
-                // Trim status message
                 while (!status_message.empty() && status_message[0] == ' ') {
                     status_message.erase(0, 1);
                 }
@@ -443,7 +364,6 @@ bool CGI::parseOutput(Response& response) const {
                 has_content_type = true;
                 response.setHeader("Content-Type", value);
             } else if (key == "Location") {
-                // Redirect
                 response.setHeader("Location", value);
                 if (status_code == 200) {
                     status_code = 302;
@@ -455,7 +375,6 @@ bool CGI::parseOutput(Response& response) const {
         }
     }
     
-    // Set default content type if not provided
     if (!has_content_type) {
         response.setHeader("Content-Type", "text/html");
     }
@@ -466,54 +385,17 @@ bool CGI::parseOutput(Response& response) const {
     return true;
 }
 
-Response CGI::buildResponse() const {
+Response CGI::buildResponseFromOutput(const std::string& output) const {
     Response response;
     
-    if (status != CGI_SUCCESS) {
-        // Return appropriate error response
+    if (output.empty()) {
         response.setStatus(500, "Internal Server Error");
         response.setHeader("Content-Type", "text/html");
-        
-        std::ostringstream body;
-        body << "<!DOCTYPE html><html><head><title>CGI Error</title></head><body>";
-        body << "<h1>500 Internal Server Error</h1>";
-        body << "<p>CGI execution failed: ";
-        
-        switch (status) {
-            case CGI_ERROR_FORK:
-                body << "Failed to create process";
-                break;
-            case CGI_ERROR_PIPE:
-                body << "Failed to create communication pipe";
-                break;
-            case CGI_ERROR_EXEC:
-                body << "Failed to execute script";
-                break;
-            case CGI_ERROR_TIMEOUT:
-                body << "Script execution timed out";
-                break;
-            case CGI_ERROR_READ:
-                body << "Failed to read script output";
-                break;
-            case CGI_ERROR_SCRIPT_NOT_FOUND:
-                body << "Script not found";
-                response.setStatus(404, "Not Found");
-                break;
-            case CGI_ERROR_NO_PERMISSION:
-                body << "Permission denied";
-                response.setStatus(403, "Forbidden");
-                break;
-            default:
-                body << "Unknown error";
-        }
-        
-        body << "</p></body></html>";
-        response.setBody(body.str());
+        response.setBody("<html><body><h1>500 Internal Server Error</h1><p>CGI produced no output</p></body></html>");
         return response;
     }
     
-    // Parse CGI output into response
-    parseOutput(response);
+    parseOutputString(output, response);
     return response;
 }
 

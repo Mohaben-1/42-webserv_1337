@@ -7,6 +7,17 @@
 #include "Response.hpp"
 #include "Config.hpp"
 
+// Structure to hold CGI info for async execution
+struct CGIInfo {
+    std::string script_path;
+    std::string interpreter;
+    std::string doc_root;
+    std::string cgi_extension;
+    const LocationConfig* location;
+    
+    CGIInfo() : location(NULL) {}
+};
+
 class Server {
 private:
     int server_fd;
@@ -28,8 +39,11 @@ public:
     std::string getServerName() const { return config.server_name; }
     const ServerConfig& getConfig() const { return config; }
     
-    // Handle request and return response (for ServerManager)
-    Response handleRequest(const Request& req);
+    // CGI detection for async handling
+    bool isCGIRequest(const Request& req, CGIInfo& info);
+    
+    // Handle non-CGI request (excludes CGI processing)
+    Response handleNonCGIRequest(const Request& req);
     
 private:
     // Location matching
@@ -63,10 +77,6 @@ private:
     // DELETE handling
     Response handleDelete(const Request& req, const LocationConfig* location);
     bool deleteFile(const std::string& path);
-    
-    // CGI handling (supports multiple CGI types)
-    Response handleCGI(const Request& req, const LocationConfig* location,
-                       const std::string& cgi_extension, const std::string& cgi_path);
     
     // Helper
     std::string buildFilePath(const std::string& uri, const LocationConfig* location);
