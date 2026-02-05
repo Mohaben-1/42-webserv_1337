@@ -746,7 +746,7 @@ class LogTimeTracker:
         print(f"{c.CYAN}┌─ USER INFORMATION {c.RESET}{'─'*48}")
         print(f"{c.CYAN}│{c.RESET} {c.BOLD}Username:{c.RESET} {self.username}")
         print(f"{c.CYAN}│{c.RESET} {c.BOLD}Date:{c.RESET}     {self.today.strftime('%A, %B %d, %Y')}")
-        print(f"{c.CYAN}│{c.RESET} {c.BOLD}Period:{c.RESET}   {start_date.strftime('%b %d')} → {end_date.strftime('%b %d, %Y')}")
+        print(f"{c.CYAN}│{c.RESET} {c.BOLD}Period:{c.RESET}   {start_date.strftime('%b %d')} ← {end_date.strftime('%b %d, %Y')}")
         print(f"{c.CYAN}└{'─'*68}{c.RESET}\n")
         
         # Today's Activity Section

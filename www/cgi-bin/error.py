@@ -68,6 +68,8 @@ else:
         <a href="?type=no_output">🔇 No Output</a>
         <a href="?type=timeout">⏱️ Infinite Loop</a>
         <p class="warn">⚠️ These will cause errors - for testing only!</p>
+        <a href="/cgi-bin/">← Back To Tests</a>
+        <a href="/">Back home</a>
     </div>
 </body>
 </html>""")

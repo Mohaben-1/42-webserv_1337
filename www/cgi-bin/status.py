@@ -92,7 +92,8 @@ print(f"""<!DOCTYPE html>
             <a href="?code=500">500</a>
             <a href="?code=503">503</a>
         </div>
-        <div class="back"><a href="/">← Home</a></div>
+        <div class="back"><a href="/cgi-bin/">← Back To Tests</a></div>
+        <div class="back"><a href="/">← Back Home</a></div>
     </div>
 </body>
 </html>""")

@@ -63,11 +63,12 @@ print("""</ul>
         <a href="/cgi-bin/api.py">JSON API</a>
         <a href="/cgi-bin/status.py">Status Codes</a>
         <a href="/cgi-bin/redirect.py?url=/cgi-bin/test.py">Redirect Test</a>
-        <a href="/cgi-bin/test.py?name=test&value=123">uery String</a>
+        <a href="/cgi-bin/test.py?name=test&value=123">Query String</a>
     </div>
     
-    <p style="margin-top: 30px;"><a href="/">Back to Home</a></p>
+
+    <p style="margin-top: 30px;"><a href="/cgi-bin/">← Back To Tests</a></p>
+    <p style="margin-top: 30px;"><a href="/">← Back Home</a></p>
 </div>
 </body>
 </html>""")
-

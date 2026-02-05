@@ -106,6 +106,11 @@ ls -la /tmp 2>/dev/null | head -5
 cat << 'EOF'
                 </pre>
             </div>
+
+            <div class="info-card">
+                <h3>Navigation</h3>
+                <a href="/cgi-bin/">← Back To Tests</a><br>
+                <a href="/">← Back Home</a>
         </div>
     </div>
 </body>

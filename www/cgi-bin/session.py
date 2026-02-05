@@ -154,7 +154,8 @@ else:
         </div>
         <div class="card">
             <ul class="links">
-                <li><a href="/cgi-bin/cookies.py">← Cookie Demo</a></li>
+                <li><a href="/cgi-bin/">← Back To Tests</a></li>
+                <li><a href="/">← Back Home</a></li>
             </ul>
         </div>""")
         print(html_foot)
