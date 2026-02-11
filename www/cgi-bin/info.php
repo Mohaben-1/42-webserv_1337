@@ -82,8 +82,8 @@ header("Content-Type: text/html");
             <?php endif; ?>
             <div class="info-card">
                 <h3>Navigation</h3>
-                <a href="/cgi-bin/">← Back To Tests</a><br>
-                <a href="/">← Back Home</a>
+                <a href="/cgi-bin/">Back To Tests</a><br>
+                <a href="/">Back Home</a>
             </div>
         </div>
     </div>
