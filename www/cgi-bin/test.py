@@ -346,7 +346,7 @@ class HTMLRenderer:
         <div class="header">
             <div class="logo">
                 <span class="logo-icon"></span>
-                <span class="logo-text">CGI Test</span>
+                <span class="logo-text">Python CGI</span>
             </div>"""
     
     @staticmethod
