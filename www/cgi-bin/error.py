@@ -39,13 +39,6 @@ ERROR_TESTS = [
         "description": "Runs forever (timeout test)",
         "color": "#58a6ff",
         "severity": "critical"
-    },
-    {
-        "type": "header",
-        "name": "Invalid Header",
-        "description": "Malformed HTTP header",
-        "color": "#d2a8ff",
-        "severity": "high"
     }
 ]
 

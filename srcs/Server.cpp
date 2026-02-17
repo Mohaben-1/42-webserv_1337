@@ -4,24 +4,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <errno.h>
 #include <ctime>
 #include <cstdlib>
 #include <cstdio>
 #include <fcntl.h>
-
-Server::Server() : server_fd(-1)
-{
-	// Default config
-	config.port = 8080;
-	config.root = "./www";
-	config.index = "index.html";
-}
 
 Server::Server(const ServerConfig& cfg) : server_fd(-1), config(cfg) {}
 
@@ -160,11 +150,21 @@ Response	Server::serveFile(const std::string& path, const LocationConfig* locati
 {
 	(void)location;
 
+	// Check read permission before opening
+	if (access(path.c_str(), R_OK) != 0)
+		return (serve403());
+
 	Response	res;
 	std::string	content = readFile(path);
 
 	if (content.empty())
-		return (serve500());
+	{
+		// File exists (caller checked) but read returned empty - could be truly empty or read error
+		struct stat	st;
+		if (stat(path.c_str(), &st) == 0 && st.st_size > 0)
+			return (serve500());
+		// File is genuinely empty, serve it
+	}
 	res.setStatus(200, "OK");
 	res.setHeader("Content-Type", Response::getContentType(path));
 	res.setBody(content);
@@ -301,6 +301,11 @@ Response	Server::serve405()
 Response	Server::serve500()
 {
 	return (serveErrorPage(500, "Internal Server Error"));
+}
+
+Response	Server::serve501()
+{
+	return (serveErrorPage(501, "Not Implemented"));
 }
 
 Response	Server::serveRedirect(int code, const std::string& url)
@@ -478,7 +483,12 @@ Response	Server::handleNonCGIRequest(const Request& req)
 	if (location && location->redirect_code > 0 && !location->redirect_url.empty())
 		return (serveRedirect(location->redirect_code, location->redirect_url));
 
-	// Check if method is allowed
+	// Check if method is a known/supported HTTP method
+	std::string	m = req.getMethod();
+	if (m != "GET" && m != "POST" && m != "DELETE")
+		return (serve501());
+
+	// Check if method is allowed for this route
 	if (!isMethodAllowed(req.getMethod(), location))
 		return (serve405());
 	

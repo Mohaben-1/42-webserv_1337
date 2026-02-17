@@ -22,6 +22,10 @@ int	main(int argc, char** argv)
 	// Setup signal handler for Ctrl+C
 	signal(SIGINT, signalHandler);
 
+	// Ignore SIGPIPE: prevents server crash when writing to a client that has closed.
+	// Without this, write() on a broken connection kills the process.
+	signal(SIGPIPE, SIG_IGN);
+
 	// Check for command-line argument (config file is required)
 	if (argc != 2)
 	{

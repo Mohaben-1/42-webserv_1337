@@ -2,7 +2,6 @@
 #define SERVER_HPP
 
 #include <string>
-#include <vector>
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Config.hpp"
@@ -46,6 +45,7 @@ class	Server
 		Response				serve405();
 		Response				serve413();
 		Response				serve500();
+		Response				serve501();
 		Response				serve201(const std::string& message);
 		
 		// POST handling
@@ -62,7 +62,6 @@ class	Server
 		std::string				getUploadPath(const LocationConfig* location) const;
 		std::string				generateFilename() const;
 	public:
-		Server();
 		Server(const ServerConfig& cfg);
 		~Server();
 		

@@ -111,11 +111,8 @@ The project is typically structured as follows:
 webserv/
 ├── config/
 ├── includes/
-├── includes_bonus/
 ├── srcs/
-├── srcs_bonus/
 ├── www
-├── www2
 ├── www2
 └── README.md
 ```

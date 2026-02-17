@@ -20,19 +20,6 @@ struct	LocationConfig
 	std::string							redirect_url;				// URL to redirect to
 
 	LocationConfig() : autoindex(false), client_max_body_size(0), redirect_code(0) {}
-	
-	// Helper to get CGI interpreter for a given extension
-	std::string getCGIPath(const std::string& ext) const
-	{
-		std::map<std::string, std::string>::const_iterator	it = cgi_handlers.find(ext);
-		return (it != cgi_handlers.end()) ? it->second : "";
-	}
-	
-	// Check if extension is a CGI type
-	bool isCGIExtension(const std::string& ext) const
-	{
-		return (cgi_handlers.find(ext) != cgi_handlers.end());
-	}
 };
 
 // Represents a server block

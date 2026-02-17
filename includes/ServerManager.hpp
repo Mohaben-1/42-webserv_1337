@@ -24,6 +24,7 @@ struct	ClientState
 	int			server_index;
 	bool		response_ready;
 	time_t		last_activity;		// Timestamp of last activity
+	bool		keep_alive;			// Whether to keep connection alive after response
 	
 	// CGI state (for non-blocking CGI execution through poll)
 	bool		cgi_in_progress;
@@ -36,8 +37,8 @@ struct	ClientState
 	time_t		cgi_start_time;			// For timeout detection
 	CGI*		cgi_handler;			// CGI context for building response
 	
-	ClientState() : bytes_sent(0), server_index(-1), response_ready(false), 
-					last_activity(time(NULL)), cgi_in_progress(false),
+	ClientState() : bytes_sent(0), server_index(-1), response_ready(false),
+					last_activity(time(NULL)), keep_alive(true), cgi_in_progress(false),
 					cgi_stdin_fd(-1), cgi_stdout_fd(-1), cgi_pid(-1),
 					cgi_input_sent(0), cgi_start_time(0), cgi_handler(NULL) {}
 };
@@ -61,7 +62,6 @@ class   ServerManager
 		void		queueResponse(int client_fd, const std::string& response);
 		void		closeClient(int client_fd);
 		void		checkTimeouts();
-		int			findServerByFd(int fd) const;
 		int			findServerByHost(const std::string& host, int port) const;
 		std::string	extractHostname(const std::string& host) const;
 		

@@ -2,7 +2,6 @@
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
-#include <cstring>
 #include <algorithm>
 
 // Base64 decoding table
@@ -16,7 +15,7 @@ static inline bool	is_base64(unsigned char c)
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
-Request::Request() : headers_complete(false), body_complete(false), content_length(0), is_chunked(false), multipart_parsed(false) {}
+Request::Request() : headers_complete(false), body_complete(false), content_length(0), is_chunked(false), parse_error(false), error_code(0), multipart_parsed(false) {}
 
 void Request::reset()
 {
@@ -30,6 +29,8 @@ void Request::reset()
 	body_complete = false;
 	content_length = 0;
 	is_chunked = false;
+	parse_error = false;
+	error_code = 0;
 	multipart_parts.clear();
 	multipart_parsed = false;
 }
@@ -209,6 +210,70 @@ std::string	Request::unchunkBody(const std::string& chunked_body) const
 	return (result);
 }
 
+// Validate request line format: METHOD SP URI SP HTTP/VERSION
+// Returns true if valid, false if malformed (sets parse_error and error_code)
+bool	Request::validateRequestLine()
+{
+	// All three components must be present
+	if (method.empty() || path.empty() || version.empty())
+	{
+		parse_error = true;
+		error_code = 400;
+		return (false);
+	}
+
+	// Method must be alphabetic uppercase (RFC 7230)
+	for (size_t i = 0; i < method.length(); i++)
+	{
+		if (method[i] < 'A' || method[i] > 'Z')
+		{
+			parse_error = true;
+			error_code = 400;
+			return (false);
+		}
+	}
+
+	// Path must start with '/' or be '*'
+	if (path[0] != '/' && path != "*")
+	{
+		parse_error = true;
+		error_code = 400;
+		return (false);
+	}
+
+	// Version must match HTTP/x.x pattern
+	if (version.length() < 6 || version.substr(0, 5) != "HTTP/")
+	{
+		parse_error = true;
+		error_code = 400;
+		return (false);
+	}
+
+	std::string	ver_num = version.substr(5);
+	if (ver_num.length() < 3 || ver_num[1] != '.')
+	{
+		parse_error = true;
+		error_code = 400;
+		return (false);
+	}
+	if (ver_num[0] < '0' || ver_num[0] > '9' || ver_num[2] < '0' || ver_num[2] > '9')
+	{
+		parse_error = true;
+		error_code = 400;
+		return (false);
+	}
+
+	// Only HTTP/1.0 and HTTP/1.1 are supported (RFC 7230)
+	if (version != "HTTP/1.0" && version != "HTTP/1.1")
+	{
+		parse_error = true;
+		error_code = 505;
+		return (false);
+	}
+
+	return (true);
+}
+
 void	Request::appendData(const std::string& data)
 {
 	raw_data += data;
@@ -274,6 +339,14 @@ bool	Request::parseHeaders()
 		request_line >> method >> path >> version;
 	}
 
+	// Validate request line
+	if (!validateRequestLine())
+	{
+		headers_complete = true;
+		body_complete = true;
+		return (true);
+	}
+
 	// Parse headers
 	while (std::getline(stream, line))
 	{
@@ -302,6 +375,16 @@ bool	Request::parseHeaders()
 	std::string	cl = getHeader("Content-Length");
 	if (!cl.empty())
 		content_length = std::atol(cl.c_str());
+
+	// HTTP/1.1 requires Host header (RFC 7230 Section 5.4)
+	if (version == "HTTP/1.1" && getHeader("Host").empty())
+	{
+		parse_error = true;
+		error_code = 400;
+		headers_complete = true;
+		body_complete = true;
+		return (true);
+	}
 
 	// Check for chunked transfer encoding
 	std::string te = getHeader("Transfer-Encoding");
@@ -332,19 +415,6 @@ bool	Request::parseHeaders()
 			body = body.substr(0, content_length);
 	}
 	return (true);
-}
-
-void	Request::parse(const std::string& raw_request)
-{
-	reset();
-	appendData(raw_request);
-	parseHeaders();
-
-	// For backwards compatibility - mark as complete if we got here
-	if (headers_complete && content_length == 0)
-		body_complete = true;
-	else if (headers_complete && body.length() >= content_length)
-		body_complete = true;
 }
 
 std::string	Request::getHeader(const std::string& key) const
@@ -520,24 +590,16 @@ void	Request::parseContentDisposition(const std::string& header, std::string& na
 	filename = safe_filename;
 }
 
-void	Request::parseContentType(const std::string& header, std::string& mime_type, std::string& charset)
+void	Request::parseContentType(const std::string& header, std::string& mime_type)
 {
 	mime_type.clear();
-	charset.clear();
 	
 	std::string	trimmed = trim(header);
 	
 	// Extract mime type (before any semicolon)
 	size_t	semi = trimmed.find(';');
 	if (semi != std::string::npos)
-	{
 		mime_type = trim(trimmed.substr(0, semi));
-
-		// Look for charset parameter
-		charset = extractQuotedValue(trimmed, "charset");
-		if (charset.empty())
-			charset = extractUnquotedValue(trimmed, "charset");
-	}
 	else
 		mime_type = trimmed;
 }
@@ -645,9 +707,9 @@ bool	Request::parseMultipart()
 		parseContentDisposition(content_disposition, part.name, part.filename);
 		part.is_file = !part.filename.empty();
 
-		// Parse Content-Type for mime type and charset
+		// Parse Content-Type for mime type
 		if (!content_type_header.empty())
-			parseContentType(content_type_header, part.content_type, part.charset);
+			parseContentType(content_type_header, part.content_type);
 		else if (part.is_file)
 			part.content_type = "application/octet-stream";	// Default content type for files
 
@@ -675,7 +737,6 @@ bool	Request::parseMultipart()
 
 		// Extract raw content
 		part.data = body.substr(content_start, content_end - content_start);
-		part.data_size = part.data.length();
 
 		// Handle Content-Transfer-Encoding
 		std::string	encoding = part.content_transfer_encoding;
@@ -719,112 +780,4 @@ size_t	Request::getTotalUploadSize() const
 	return (total);
 }
 
-std::map<std::string, std::string>	Request::parseQueryString() const
-{
-	std::map<std::string, std::string>	params;
 
-	// Find query string in path
-	size_t	qmark = path.find('?');
-	if (qmark == std::string::npos)
-		return (params);
-	
-	std::string	query = path.substr(qmark + 1);
-	size_t		pos = 0;
-	
-	while (pos < query.length())
-	{
-		size_t		amp = query.find('&', pos);
-		std::string	pair;
-
-		if (amp == std::string::npos)
-		{
-			pair = query.substr(pos);
-			pos = query.length();
-		}
-		else
-		{
-			pair = query.substr(pos, amp - pos);
-			pos = amp + 1;
-		}
-		
-		size_t	eq = pair.find('=');
-
-		if (eq != std::string::npos)
-		{
-			std::string key = urlDecode(pair.substr(0, eq));
-			std::string value = urlDecode(pair.substr(eq + 1));
-			params[key] = value;
-		}
-		else if (!pair.empty())
-			params[urlDecode(pair)] = "";	// Key without value
-	}
-	return (params);
-}
-
-// Cookie support - parse Cookie header
-std::map<std::string, std::string>	Request::getCookies() const
-{
-	std::map<std::string, std::string>	cookies;
-	std::string							cookie_header = getHeader("Cookie");
-	
-	if (cookie_header.empty())
-		return (cookies);
-	
-	size_t	pos = 0;
-
-	while (pos < cookie_header.length())
-	{
-		// Skip whitespace
-		while (pos < cookie_header.length() && (cookie_header[pos] == ' ' || cookie_header[pos] == '\t'))
-			pos++;
-
-		// Find the next semicolon or end
-		size_t		end = cookie_header.find(';', pos);
-		std::string	pair;
-
-		if (end == std::string::npos)
-		{
-			pair = cookie_header.substr(pos);
-			pos = cookie_header.length();
-		}
-		else
-		{
-			pair = cookie_header.substr(pos, end - pos);
-			pos = end + 1;
-		}
-
-		// Parse name=value
-		size_t	eq = pair.find('=');
-
-		if (eq != std::string::npos)
-		{
-			std::string	name = pair.substr(0, eq);
-			std::string	value = pair.substr(eq + 1);
-			
-			// Trim whitespace from name
-			size_t		start = name.find_first_not_of(" \t");
-			size_t		finish = name.find_last_not_of(" \t");
-
-			if (start != std::string::npos)
-				name = name.substr(start, finish - start + 1);
-
-			// Trim whitespace and quotes from value
-			start = value.find_first_not_of(" \t\"");
-			finish = value.find_last_not_of(" \t\"");
-			if (start != std::string::npos)
-				value = value.substr(start, finish - start + 1);
-			cookies[name] = value;
-		}
-	}
-	return (cookies);
-}
-
-std::string	Request::getCookie(const std::string& name) const
-{
-	std::map<std::string, std::string>					cookies = getCookies();
-	std::map<std::string, std::string>::const_iterator	it = cookies.find(name);
-
-	if (it != cookies.end())
-		return (it->second);
-	return ("");
-}

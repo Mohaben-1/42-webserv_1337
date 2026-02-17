@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -42,7 +41,6 @@ void	CGI::setupFromRequest(const Request& req, const std::string& script,
 	request_method = req.getMethod();
 	content_type = req.getHeader("Content-Type");
 	content_length = req.getContentLength();
-	request_body = req.getBody();
 	
 	// Parse URL to get script name and query string
 	std::string	url = req.getPath();
@@ -136,12 +134,6 @@ char**	CGI::buildEnvArray() const
 
 	port_ss << server_port;
 	env_vars.push_back("SERVER_PORT=" + port_ss.str());
-	
-	if (!remote_addr.empty())
-	{
-		env_vars.push_back("REMOTE_ADDR=" + remote_addr);
-		env_vars.push_back("REMOTE_HOST=" + remote_addr);
-	}
 	
 	// Content headers for POST
 	if (!content_type.empty())
@@ -239,6 +231,9 @@ CGIStatus	CGI::executeCgi(int& stdin_fd, int& stdout_fd, pid_t& child_pid)
 	}
 	if (pid == 0)
 	{
+		// Restore SIGPIPE default for CGI scripts (parent ignores it)
+		signal(SIGPIPE, SIG_DFL);
+
 		close(pipe_in[1]);
 		close(pipe_out[0]);
 		dup2(pipe_in[0], STDIN_FILENO);
@@ -303,10 +298,8 @@ bool	CGI::parseOutputString(const std::string& output, Response& response) const
 		header_end = output.find("\n\n");
 		if (header_end == std::string::npos)
 		{
-			// No headers found, treat entire output as body
-			response.setBody(output);
-			response.setHeader("Content-Type", "text/html");
-			return true;
+			// No valid CGI header separator found - invalid CGI output
+			return (false);
 		}
 	}
 
@@ -392,7 +385,13 @@ Response	CGI::buildResponseFromOutput(const std::string& output) const
 		response.setBody("<html><body><h1>500 Internal Server Error</h1><p>CGI produced no output</p></body></html>");
 		return (response);
 	}
-	parseOutputString(output, response);
+	if (!parseOutputString(output, response))
+	{
+		response.setStatus(500, "Internal Server Error");
+		response.setHeader("Content-Type", "text/html");
+		response.setBody("<html><body><h1>500 Internal Server Error</h1><p>CGI produced invalid output (missing headers)</p></body></html>");
+		return (response);
+	}
 	return (response);
 }
 
