@@ -114,6 +114,7 @@ webserv/
 ├── srcs/
 ├── www
 ├── www2
+├── Makefile
 └── README.md
 ```
 
