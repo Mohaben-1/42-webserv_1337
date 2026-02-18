@@ -256,20 +256,10 @@ CGIStatus	CGI::executeCgi(int& stdin_fd, int& stdout_fd, pid_t& child_pid)
 		char**	env = buildEnvArray();
 
 		char*	argv[3];
-		if (!cgi_interpreter.empty())
-		{
-			argv[0] = const_cast<char*>(cgi_interpreter.c_str());
-			argv[1] = const_cast<char*>(script_filename.c_str());
-			argv[2] = NULL;
-			execve(cgi_interpreter.c_str(), argv, env);
-		}
-		else
-		{
-			std::string exec_path = "./" + script_filename;
-			argv[0] = const_cast<char*>(exec_path.c_str());
-			argv[1] = NULL;
-			execve(exec_path.c_str(), argv, env);
-		}
+		argv[0] = const_cast<char*>(cgi_interpreter.c_str());
+		argv[1] = const_cast<char*>(script_filename.c_str());
+		argv[2] = NULL;
+		execve(cgi_interpreter.c_str(), argv, env);
 		std::cerr << "CGI Error: execve failed: " << strerror(errno) << std::endl;
 		freeEnvArray(env);
 		_exit(1);

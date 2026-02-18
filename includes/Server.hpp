@@ -9,9 +9,7 @@
 // Structure to hold CGI info for async execution
 struct	CGIInfo
 {
-	std::string				script_path;
 	std::string				interpreter;
-	std::string				doc_root;
 	std::string				cgi_extension;
 	const LocationConfig*	location;
 
@@ -36,17 +34,15 @@ class	Server
 		
 		// Response builders
 		Response				serveFile(const std::string& path, const LocationConfig* location);
-		Response				serveDirectory(const std::string& path, const LocationConfig* location);
+		Response				serveDirectory(const std::string& fs_path, const std::string& uri_path, const LocationConfig* location);
 		Response				serveErrorPage(int code, const std::string& message);
 		Response				serveRedirect(int code, const std::string& url);
-		Response				serve200(const std::string& message);
 		Response				serve403();
 		Response				serve404();
 		Response				serve405();
 		Response				serve413();
 		Response				serve500();
 		Response				serve501();
-		Response				serve201(const std::string& message);
 		
 		// POST handling
 		Response				handlePost(const Request& req, const LocationConfig* location);

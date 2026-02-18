@@ -171,10 +171,10 @@ Response	Server::serveFile(const std::string& path, const LocationConfig* locati
 	return (res);
 }
 
-Response	Server::serveDirectory(const std::string& path, const LocationConfig* location)
+Response	Server::serveDirectory(const std::string& fs_path, const std::string& uri_path, const LocationConfig* location)
 {
 	// Try to serve index file
-	std::string	index_path = path;
+	std::string	index_path = fs_path;
 
 	if (index_path[index_path.length() - 1] != '/')
 		index_path += "/";
@@ -191,18 +191,22 @@ Response	Server::serveDirectory(const std::string& path, const LocationConfig* l
 	// If autoindex is enabled, show directory listing
 	if (location && location->autoindex)
 	{
-		
 		Response	res;
 
 		res.setStatus(200, "OK");
 		res.setHeader("Content-Type", "text/html");
-		
+
+		// Build base URI for links
+		std::string	base = uri_path;
+		if (!base.empty() && base[base.size() - 1] != '/')
+			base += '/';
+
 		// Generate directory listing HTML
 		std::ostringstream	html;
 
 		html << "<!DOCTYPE html>\n";
 		html << "<html>\n<head>\n";
-		html << "<title>Index of " << path << "</title>\n";
+		html << "<title>Index of " << uri_path << "</title>\n";
 		html << "<style>\n";
 		html << "body { font-family: Arial, sans-serif; margin: 40px; }\n";
 		html << "h1 { color: #333; }\n";
@@ -212,11 +216,11 @@ Response	Server::serveDirectory(const std::string& path, const LocationConfig* l
 		html << "a:hover { text-decoration: underline; }\n";
 		html << "</style>\n";
 		html << "</head>\n<body>\n";
-		html << "<h1>Index of " << path << "</h1>\n";
+		html << "<h1>Index of " << uri_path << "</h1>\n";
 		html << "<ul>\n";
 
 		// Read directory contents
-		DIR*	dir = opendir(path.c_str());
+		DIR*	dir = opendir(fs_path.c_str());
 
 		if (dir)
 		{
@@ -229,10 +233,18 @@ Response	Server::serveDirectory(const std::string& path, const LocationConfig* l
 				// Skip . but show ..
 				if (name == ".")
 					continue ;
-				html << "<li><a href=\"" << name;
-				if (entry->d_type == DT_DIR)
-					html << "/";
-				html << "\">" << name;
+
+				std::string	href;
+				if (name == "..")
+					href = "../";
+				else
+				{
+					href = base + name;
+					if (entry->d_type == DT_DIR)
+						href += "/";
+				}
+
+				html << "<li><a href=\"" << href << "\">" << name;
 				if (entry->d_type == DT_DIR)
 					html << "/";
 				html << "</a></li>\n";
@@ -337,20 +349,6 @@ Response	Server::serveRedirect(int code, const std::string& url)
 	return (res);
 }
 
-Response	Server::serve200(const std::string& message)
-{
-	Response	res;
-
-	res.setStatus(200, "OK");
-	res.setHeader("Content-Type", "application/json");
-
-	std::ostringstream	json;
-
-	json << "{\"status\":\"success\",\"message\":\"" << message << "\"}";
-	res.setBody(json.str());
-	return (res);
-}
-
 std::string	Server::readFile(const std::string& path)
 {
 	std::ifstream	file(path.c_str(), std::ios::binary);
@@ -397,19 +395,6 @@ Response	Server::serve413()
 	return (serveErrorPage(413, "Payload Too Large"));
 }
 
-Response	Server::serve201(const std::string& message)
-{
-	Response	res;
-
-	res.setStatus(201, "Created");
-	res.setHeader("Content-Type", "application/json");
-
-	std::ostringstream	json;
-	json << "{\"status\":\"success\",\"message\":\"" << message << "\"}";
-	res.setBody(json.str());
-	return (res);
-}
-
 std::string	Server::getUploadPath(const LocationConfig* location) const
 {
 	if (location && !location->upload_store.empty())
@@ -450,24 +435,6 @@ bool	Server::isCGIRequest(const Request& req, CGIInfo& info)
 			info.cgi_extension = it->first;
 			info.interpreter = it->second;
 			info.location = location;
-
-			// Get the correct document root
-			std::string	doc_root = config.root;
-			std::string	url_path = req.getPath();
-
-			// If location has a custom root, use it and adjust the path
-			if (!location->root.empty())
-			{
-				doc_root = location->root;
-				if (url_path.find(location->path) == 0)
-				{
-					url_path = url_path.substr(location->path.length());
-					if (url_path.empty() || url_path[0] != '/')
-						url_path = "/" + url_path;
-				}
-			}
-			info.doc_root = doc_root;
-			info.script_path = CGI::getScriptPath(url_path, doc_root, it->first);
 			return (true);
 		}
 	}
@@ -520,7 +487,12 @@ Response	Server::handleNonCGIRequest(const Request& req)
 	
 	// Check if it's a directory
 	if (isDirectory(file_path))
-		return (serveDirectory(file_path, location));
+	{
+		std::string uri = req.getPath();
+		if (!uri.empty() && uri[uri.size() - 1] != '/')
+			return (serveRedirect(301, uri + "/"));
+		return (serveDirectory(file_path, req.getPath(), location));
+	}
 
 	// It's a file, serve it
 	return (serveFile(file_path, location));
@@ -572,8 +544,6 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 
 	int							files_saved = 0;
 	std::vector<std::string>	saved_files;
-	std::vector<size_t>			file_sizes;
-	std::vector<std::string>	file_types;
 	
 	for (size_t i = 0; i < parts.size(); i++)
 	{
@@ -615,8 +585,6 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 			std::string	saved_name = (last_slash != std::string::npos) ? file_path.substr(last_slash + 1) : file_path;
 
 			saved_files.push_back(saved_name);
-			file_sizes.push_back(part.data.length());
-			file_types.push_back(part.content_type);
 		}
 		else
 			return (serve500());
@@ -631,22 +599,26 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 		return (res);
 	}
 
-	// Build success response with detailed file information
-	std::ostringstream	json;
-
-	json << "{\"status\":\"success\",\"message\":\"" << files_saved << " file(s) uploaded\",\"files\":[";
-	for (size_t i = 0; i < saved_files.size(); i++)
-	{
-		if (i > 0)
-			json << ",";
-		json << "{\"name\":\"" << saved_files[i] << "\"" << ",\"size\":" << file_sizes[i] << ",\"type\":\"" << file_types[i] << "\"}";
-	}
-	json << "],\"total_size\":" << req.getTotalUploadSize() << "}";
-
+	// Return 201 Created with Location header (nginx-like behavior)
 	Response	res;
 	res.setStatus(201, "Created");
-	res.setHeader("Content-Type", "application/json");
-	res.setBody(json.str());
+	res.setHeader("Content-Length", "0");
+
+	// Build Location header from the first uploaded file
+	std::string	location_path;
+	if (location && !location->upload_store.empty())
+	{
+		// Derive URI path from upload_store relative to server root
+		std::string	store = location->upload_store;
+		if (store.find(config.root) == 0)
+			location_path = store.substr(config.root.length());
+		else
+			location_path = "/uploads";
+	}
+	else
+		location_path = "/uploads";
+	if (!saved_files.empty())
+		res.setHeader("Location", location_path + "/" + saved_files[0]);
 	return (res);
 }
 
@@ -692,7 +664,25 @@ Response	Server::handleRawUpload(const Request& req, const LocationConfig* locat
 
 	if (!writeFile(file_path, body))
 		return (serve500());
-	return (serve201("File uploaded as " + filename));
+
+	// Return 201 Created with Location header (nginx-like behavior)
+	Response	res;
+	res.setStatus(201, "Created");
+	res.setHeader("Content-Length", "0");
+
+	std::string	location_path;
+	if (location && !location->upload_store.empty())
+	{
+		std::string	store = location->upload_store;
+		if (store.find(config.root) == 0)
+			location_path = store.substr(config.root.length());
+		else
+			location_path = "/uploads";
+	}
+	else
+		location_path = "/uploads";
+	res.setHeader("Location", location_path + "/" + filename);
+	return (res);
 }
 
 bool	Server::deleteFile(const std::string& path)
@@ -750,6 +740,9 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 	if (!deleteFile(file_path))
 		return (serve500());
 
-	// Return 200 with message
-	return (serve200("File deleted successfully"));
+	// Return 204 No Content (nginx-like behavior)
+	Response	res;
+	res.setStatus(204, "No Content");
+	res.setHeader("Content-Length", "0");
+	return (res);
 }

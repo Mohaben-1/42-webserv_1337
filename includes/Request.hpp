@@ -71,7 +71,6 @@ class	Request
 		bool								isMultipart() const;
 		bool								parseMultipart();
 		const std::vector<MultipartPart>&	getParts() const { return multipart_parts; }
-		size_t								getTotalUploadSize() const;
 		
 		// Utility functions
 		static std::string					urlDecode(const std::string& str);

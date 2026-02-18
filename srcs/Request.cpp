@@ -768,16 +768,4 @@ bool	Request::parseMultipart()
 	return (!multipart_parts.empty());
 }
 
-size_t	Request::getTotalUploadSize() const
-{
-	size_t	total = 0;
-
-	for (size_t i = 0; i < multipart_parts.size(); i++)
-	{
-		if (multipart_parts[i].is_file)
-			total += multipart_parts[i].data.length();
-	}
-	return (total);
-}
-
 
