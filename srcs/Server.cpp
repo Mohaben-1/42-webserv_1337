@@ -192,49 +192,607 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 		// Generate directory listing HTML
 		std::ostringstream	html;
 
-		html << "<!DOCTYPE html>\n";
-		html << "<html>\n<head>\n";
-		html << "<title>Index of " << uri_path << "</title>\n";
-		html << "<style>\n";
-		html << "body { font-family: Arial, sans-serif; margin: 40px; }\n";
-		html << "h1 { color: #333; }\n";
-		html << "ul { list-style: none; padding: 0; }\n";
-		html << "li { padding: 5px; }\n";
-		html << "a { text-decoration: none; color: #0066cc; }\n";
-		html << "a:hover { text-decoration: underline; }\n";
-		html << "</style>\n";
-		html << "</head>\n<body>\n";
-		html << "<h1>Index of " << uri_path << "</h1>\n";
-		html << "<ul>\n";
+		html << "<!DOCTYPE html>\n"
+			 << "<html lang=\"en\">\n"
+			 << "<head>\n"
+			 << "    <meta charset=\"UTF-8\">\n"
+			 << "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+			 << "    <title>Files • " << uri_path << " • 42 Webserv</title>\n"
+			 << "    <style>\n"
+			 << "        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');\n"
+			 << "        \n"
+			 << "        :root {\n"
+			 << "            --primary: #4f46e5;\n"
+			 << "            --primary-dark: #4338ca;\n"
+			 << "            --secondary: #10b981;\n"
+			 << "            --dark: #1f2937;\n"
+			 << "            --light: #f9fafb;\n"
+			 << "            --gray: #6b7280;\n"
+			 << "            --border: #e5e7eb;\n"
+			 << "            --hover-bg: #f3f4f6;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        * {\n"
+			 << "            margin: 0;\n"
+			 << "            padding: 0;\n"
+			 << "            box-sizing: border-box;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        body {\n"
+			 << "            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;\n"
+			 << "            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);\n"
+			 << "            color: var(--dark);\n"
+			 << "            line-height: 1.6;\n"
+			 << "            min-height: 100vh;\n"
+			 << "            padding: 40px 20px;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .container {\n"
+			 << "            max-width: 1000px;\n"
+			 << "            margin: 0 auto;\n"
+			 << "            background: white;\n"
+			 << "            border-radius: 24px;\n"
+			 << "            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);\n"
+			 << "            overflow: hidden;\n"
+			 << "            animation: fadeInUp 0.6s ease-out;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Header */\n"
+			 << "        .header {\n"
+			 << "            background: white;\n"
+			 << "            padding: 30px 40px;\n"
+			 << "            border-bottom: 1px solid var(--border);\n"
+			 << "            position: relative;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .header::before {\n"
+			 << "            content: '';\n"
+			 << "            position: absolute;\n"
+			 << "            top: 0;\n"
+			 << "            left: 0;\n"
+			 << "            right: 0;\n"
+			 << "            height: 4px;\n"
+			 << "            background: linear-gradient(90deg, var(--primary), var(--secondary));\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .breadcrumb {\n"
+			 << "            display: flex;\n"
+			 << "            align-items: center;\n"
+			 << "            gap: 8px;\n"
+			 << "            flex-wrap: wrap;\n"
+			 << "            margin-bottom: 15px;\n"
+			 << "            font-family: 'JetBrains Mono', monospace;\n"
+			 << "            font-size: 0.9rem;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .breadcrumb a {\n"
+			 << "            color: var(--primary);\n"
+			 << "            text-decoration: none;\n"
+			 << "            transition: color 0.2s;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .breadcrumb a:hover {\n"
+			 << "            color: var(--primary-dark);\n"
+			 << "            text-decoration: underline;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .breadcrumb .separator {\n"
+			 << "            color: var(--gray);\n"
+			 << "            font-size: 14px;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .header h1 {\n"
+			 << "            font-size: 2rem;\n"
+			 << "            font-weight: 600;\n"
+			 << "            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);\n"
+			 << "            -webkit-background-clip: text;\n"
+			 << "            background-clip: text;\n"
+			 << "            color: transparent;\n"
+			 << "            word-break: break-all;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .path-badge {\n"
+			 << "            display: inline-block;\n"
+			 << "            background: var(--light);\n"
+			 << "            padding: 6px 15px;\n"
+			 << "            border-radius: 20px;\n"
+			 << "            font-size: 0.85rem;\n"
+			 << "            color: var(--gray);\n"
+			 << "            margin-top: 10px;\n"
+			 << "            font-family: 'JetBrains Mono', monospace;\n"
+			 << "            border: 1px solid var(--border);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .path-badge span {\n"
+			 << "            color: var(--primary);\n"
+			 << "            font-weight: 500;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Stats Bar */\n"
+			 << "        .stats-bar {\n"
+			 << "            background: var(--light);\n"
+			 << "            padding: 15px 40px;\n"
+			 << "            display: flex;\n"
+			 << "            justify-content: space-between;\n"
+			 << "            align-items: center;\n"
+			 << "            flex-wrap: wrap;\n"
+			 << "            gap: 15px;\n"
+			 << "            border-bottom: 1px solid var(--border);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .stats-left {\n"
+			 << "            display: flex;\n"
+			 << "            align-items: center;\n"
+			 << "            gap: 20px;\n"
+			 << "            flex-wrap: wrap;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .stat-item {\n"
+			 << "            display: flex;\n"
+			 << "            align-items: center;\n"
+			 << "            gap: 8px;\n"
+			 << "            color: var(--gray);\n"
+			 << "            font-size: 0.9rem;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .stat-value {\n"
+			 << "            background: white;\n"
+			 << "            padding: 4px 12px;\n"
+			 << "            border-radius: 30px;\n"
+			 << "            font-weight: 600;\n"
+			 << "            color: var(--primary);\n"
+			 << "            border: 1px solid var(--border);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .home-link {\n"
+			 << "            display: inline-flex;\n"
+			 << "            align-items: center;\n"
+			 << "            gap: 6px;\n"
+			 << "            padding: 8px 16px;\n"
+			 << "            background: white;\n"
+			 << "            border-radius: 30px;\n"
+			 << "            text-decoration: none;\n"
+			 << "            color: var(--primary);\n"
+			 << "            border: 1px solid var(--border);\n"
+			 << "            font-size: 0.9rem;\n"
+			 << "            font-weight: 500;\n"
+			 << "            transition: all 0.2s;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .home-link:hover {\n"
+			 << "            background: var(--primary);\n"
+			 << "            color: white;\n"
+			 << "            border-color: var(--primary);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* File List */\n"
+			 << "        .file-list {\n"
+			 << "            padding: 20px 30px;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .list-header {\n"
+			 << "            display: grid;\n"
+			 << "            grid-template-columns: 1fr 100px 80px;\n"
+			 << "            padding: 15px 20px;\n"
+			 << "            background: var(--light);\n"
+			 << "            border-radius: 12px;\n"
+			 << "            color: var(--gray);\n"
+			 << "            font-weight: 600;\n"
+			 << "            font-size: 0.8rem;\n"
+			 << "            text-transform: uppercase;\n"
+			 << "            letter-spacing: 0.5px;\n"
+			 << "            border: 1px solid var(--border);\n"
+			 << "            margin-bottom: 10px;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .list-item {\n"
+			 << "            display: grid;\n"
+			 << "            grid-template-columns: 1fr 100px 80px;\n"
+			 << "            padding: 15px 20px;\n"
+			 << "            border-radius: 10px;\n"
+			 << "            transition: all 0.2s ease;\n"
+			 << "            align-items: center;\n"
+			 << "            border-left: 3px solid transparent;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .list-item:hover {\n"
+			 << "            background: var(--hover-bg);\n"
+			 << "            border-left-color: var(--primary);\n"
+			 << "            transform: translateX(5px);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .item-name {\n"
+			 << "            display: flex;\n"
+			 << "            align-items: center;\n"
+			 << "            gap: 12px;\n"
+			 << "            overflow: hidden;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .item-icon {\n"
+			 << "            width: 24px;\n"
+			 << "            height: 24px;\n"
+			 << "            display: flex;\n"
+			 << "            align-items: center;\n"
+			 << "            justify-content: center;\n"
+			 << "            color: var(--gray);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .item-name a {\n"
+			 << "            color: var(--dark);\n"
+			 << "            text-decoration: none;\n"
+			 << "            font-weight: 500;\n"
+			 << "            word-break: break-all;\n"
+			 << "            transition: color 0.2s;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .item-name a:hover {\n"
+			 << "            color: var(--primary);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .directory .item-name a {\n"
+			 << "            color: var(--primary);\n"
+			 << "            font-weight: 600;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .item-size, .item-date {\n"
+			 << "            color: var(--gray);\n"
+			 << "            font-size: 0.85rem;\n"
+			 << "            font-family: 'JetBrains Mono', monospace;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .parent-item {\n"
+			 << "            background: var(--light);\n"
+			 << "            margin-bottom: 15px;\n"
+			 << "            border-radius: 10px;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .parent-item .list-item {\n"
+			 << "            background: var(--light);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .parent-item .item-name a {\n"
+			 << "            color: var(--primary);\n"
+			 << "            font-weight: 600;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Empty State */\n"
+			 << "        .empty-state {\n"
+			 << "            text-align: center;\n"
+			 << "            padding: 80px 40px;\n"
+			 << "            color: var(--gray);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .empty-state svg {\n"
+			 << "            width: 64px;\n"
+			 << "            height: 64px;\n"
+			 << "            margin-bottom: 20px;\n"
+			 << "            opacity: 0.5;\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .empty-state h3 {\n"
+			 << "            font-size: 1.5rem;\n"
+			 << "            margin-bottom: 10px;\n"
+			 << "            color: var(--dark);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Footer */\n"
+			 << "        .footer {\n"
+			 << "            background: var(--light);\n"
+			 << "            padding: 20px 40px;\n"
+			 << "            text-align: center;\n"
+			 << "            color: var(--gray);\n"
+			 << "            font-size: 0.9rem;\n"
+			 << "            border-top: 1px solid var(--border);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        .footer .server-info {\n"
+			 << "            font-family: 'JetBrains Mono', monospace;\n"
+			 << "            font-size: 0.8rem;\n"
+			 << "            margin-top: 5px;\n"
+			 << "            color: var(--primary);\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Animations */\n"
+			 << "        @keyframes fadeInUp {\n"
+			 << "            from {\n"
+			 << "                opacity: 0;\n"
+			 << "                transform: translateY(20px);\n"
+			 << "            }\n"
+			 << "            to {\n"
+			 << "                opacity: 1;\n"
+			 << "                transform: translateY(0);\n"
+			 << "            }\n"
+			 << "        }\n"
+			 << "        \n"
+			 << "        /* Responsive */\n"
+			 << "        @media (max-width: 768px) {\n"
+			 << "            body {\n"
+			 << "                padding: 20px 10px;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .header {\n"
+			 << "                padding: 20px;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .header h1 {\n"
+			 << "                font-size: 1.5rem;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .stats-bar {\n"
+			 << "                padding: 15px 20px;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .file-list {\n"
+			 << "                padding: 15px;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .list-header {\n"
+			 << "                display: none;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .list-item {\n"
+			 << "                grid-template-columns: 1fr;\n"
+			 << "                gap: 5px;\n"
+			 << "                border: 1px solid var(--border);\n"
+			 << "                margin-bottom: 10px;\n"
+			 << "                background: white;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .item-size, .item-date {\n"
+			 << "                padding-left: 36px;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .item-size::before {\n"
+			 << "                content: 'Size: ';\n"
+			 << "                font-weight: 600;\n"
+			 << "                color: var(--dark);\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .item-date::before {\n"
+			 << "                content: 'Modified: ';\n"
+			 << "                font-weight: 600;\n"
+			 << "                color: var(--dark);\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .stats-left {\n"
+			 << "                flex-direction: column;\n"
+			 << "                align-items: flex-start;\n"
+			 << "                gap: 10px;\n"
+			 << "                width: 100%;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .stat-item {\n"
+			 << "                width: 100%;\n"
+			 << "                justify-content: space-between;\n"
+			 << "            }\n"
+			 << "            \n"
+			 << "            .home-link {\n"
+			 << "                width: 100%;\n"
+			 << "                justify-content: center;\n"
+			 << "            }\n"
+			 << "        }\n"
+			 << "    </style>\n"
+			 << "</head>\n"
+			 << "<body>\n"
+			 << "    <div class=\"container\">\n"
+			 << "        <div class=\"header\">\n"
+			 << "            <div class=\"breadcrumb\">\n"
+			 << "                <a href=\"/\">🏠 Home</a>\n"
+			 << "                <span class=\"separator\">›</span>\n";
 
-		DIR*	dir = opendir(fs_path.c_str());
+		// Generate breadcrumb navigation
+		std::string path_so_far = "/";
+		std::string remaining_path = uri_path;
+		if (remaining_path[0] == '/')
+			remaining_path = remaining_path.substr(1);
+		
+		size_t pos = 0;
+		while ((pos = remaining_path.find('/')) != std::string::npos)
+		{
+			std::string segment = remaining_path.substr(0, pos);
+			if (!segment.empty())
+			{
+				path_so_far += segment + "/";
+				html << "                <a href=\"" << path_so_far << "\">" << segment << "</a>\n";
+				html << "                <span class=\"separator\">›</span>\n";
+			}
+			remaining_path.erase(0, pos + 1);
+		}
+		if (!remaining_path.empty())
+		{
+			path_so_far += remaining_path;
+			html << "                <span style=\"color: var(--gray);\">" << remaining_path << "</span>\n";
+		}
+		
+		html << "            </div>\n"
+			 << "            \n"
+			 << "            <h1>📁 ";
+
+		// Extract last directory name for title
+		std::string dir_name = uri_path;
+		if (dir_name == "/")
+			html << "Root Directory";
+		else
+		{
+			if (dir_name[dir_name.length() - 1] == '/')
+				dir_name = dir_name.substr(0, dir_name.length() - 1);
+			size_t last_slash = dir_name.find_last_of('/');
+			if (last_slash != std::string::npos)
+				dir_name = dir_name.substr(last_slash + 1);
+			html << dir_name;
+		}
+		
+		html << "</h1>\n"
+			 << "            \n"
+			 << "            <div class=\"path-badge\">\n"
+			 << "                <span>Path:</span> " << uri_path << "\n"
+			 << "            </div>\n"
+			 << "        </div>\n"
+			 << "        \n"
+			 << "        <div class=\"stats-bar\">\n"
+			 << "            <div class=\"stats-left\">\n";
+
+		// Count items
+		int dirCount = 0;
+		int fileCount = 0;
+		DIR* dir = opendir(fs_path.c_str());
 		if (dir)
 		{
-			struct dirent*	entry;
-
+			struct dirent* entry;
 			while ((entry = readdir(dir)) != NULL)
 			{
-				std::string	name = entry->d_name;
-				std::string	href;
-
-				if (name == ".")
-					continue ;
-				if (name == "..")
-					href = "../";
-				else
+				std::string name = entry->d_name;
+				if (name != "." && name != "..")
 				{
-					href = base + name;
 					if (entry->d_type == DT_DIR)
-						href += "/";
+						dirCount++;
+					else
+						fileCount++;
 				}
-				html << "<li><a href=\"" << href << "\">" << name;
-				if (entry->d_type == DT_DIR)
-					html << "/";
-				html << "</a></li>\n";
 			}
 			closedir(dir);
 		}
-		html << "</ul>\n</body>\n</html>";
+		
+		html << "                <div class=\"stat-item\">\n"
+			 << "                    <span>📁 Directories</span>\n"
+			 << "                    <span class=\"stat-value\">" << dirCount << "</span>\n"
+			 << "                </div>\n"
+			 << "                <div class=\"stat-item\">\n"
+			 << "                    <span>📄 Files</span>\n"
+			 << "                    <span class=\"stat-value\">" << fileCount << "</span>\n"
+			 << "                </div>\n"
+			 << "            </div>\n"
+			 << "            \n"
+			 << "            <a href=\"/\" class=\"home-link\">\n"
+			 << "                <span>🏠</span>\n"
+			 << "                Back to Home\n"
+			 << "            </a>\n"
+			 << "        </div>\n"
+			 << "        \n"
+			 << "        <div class=\"file-list\">\n";
+
+		// Parent directory link
+		if (uri_path != "/")
+		{
+			html << "            <div class=\"parent-item\">\n"
+				 << "                <div class=\"list-item\">\n"
+				 << "                    <div class=\"item-name\">\n"
+				 << "                        <span class=\"item-icon\">📂</span>\n"
+				 << "                        <a href=\"../\">Parent Directory</a>\n"
+				 << "                    </div>\n"
+				 << "                    <div class=\"item-size\">-</div>\n"
+				 << "                    <div class=\"item-date\">-</div>\n"
+				 << "                </div>\n"
+				 << "            </div>\n";
+		}
+
+		// List header
+		html << "            <div class=\"list-header\">\n"
+			 << "                <div>Name</div>\n"
+			 << "                <div>Size</div>\n"
+			 << "                <div>Modified</div>\n"
+			 << "            </div>\n";
+
+		// Open directory and list contents
+		dir = opendir(fs_path.c_str());
+		if (dir)
+		{
+			struct dirent* entry;
+			std::vector<std::string> directories;
+			std::vector<std::string> files;
+
+			// Separate directories and files
+			while ((entry = readdir(dir)) != NULL)
+			{
+				std::string name = entry->d_name;
+				if (name == "." || name == "..")
+					continue;
+				
+				if (entry->d_type == DT_DIR)
+					directories.push_back(name);
+				else
+					files.push_back(name);
+			}
+			closedir(dir);
+
+			// Sort alphabetically
+			std::sort(directories.begin(), directories.end());
+			std::sort(files.begin(), files.end());
+
+			// Display directories first
+			for (std::vector<std::string>::const_iterator it = directories.begin(); it != directories.end(); ++it)
+			{
+				const std::string& name = *it;
+				std::string href = base + name + "/";
+				html << "            <div class=\"list-item directory\">\n"
+					 << "                <div class=\"item-name\">\n"
+					 << "                    <span class=\"item-icon\">📁</span>\n"
+					 << "                    <a href=\"" << href << "\">" << name << "</a>\n"
+					 << "                </div>\n"
+					 << "                <div class=\"item-size\">-</div>\n"
+					 << "                <div class=\"item-date\">-</div>\n"
+					 << "            </div>\n";
+			}
+
+			// Display files
+			for (std::vector<std::string>::const_iterator it = files.begin(); it != files.end(); ++it)
+			{
+				const std::string& name = *it;
+				std::string href = base + name;
+				
+				// Choose icon based on file extension
+				std::string icon = "📄";
+				size_t dot_pos = name.find_last_of('.');
+				if (dot_pos != std::string::npos)
+				{
+					std::string ext = name.substr(dot_pos + 1);
+					if (ext == "html" || ext == "htm") icon = "🌐";
+					else if (ext == "css") icon = "🎨";
+					else if (ext == "js") icon = "⚡";
+					else if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif") icon = "🖼️";
+					else if (ext == "pdf") icon = "📕";
+					else if (ext == "txt" || ext == "md") icon = "📝";
+					else if (ext == "zip" || ext == "tar" || ext == "gz") icon = "📦";
+					else if (ext == "mp3" || ext == "wav") icon = "🎵";
+					else if (ext == "mp4" || ext == "avi") icon = "🎬";
+					else if (ext == "cpp" || ext == "h" || ext == "c") icon = "⚙️";
+					else if (ext == "py") icon = "🐍";
+					else if (ext == "php") icon = "🐘";
+				}
+				
+				html << "            <div class=\"list-item\">\n"
+					 << "                <div class=\"item-name\">\n"
+					 << "                    <span class=\"item-icon\">" << icon << "</span>\n"
+					 << "                    <a href=\"" << href << "\">" << name << "</a>\n"
+					 << "                </div>\n"
+					 << "                <div class=\"item-size\">-</div>\n"
+					 << "                <div class=\"item-date\">-</div>\n"
+					 << "            </div>\n";
+			}
+		}
+		else
+		{
+			html << "            <div class=\"empty-state\">\n"
+				 << "                <svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\">\n"
+				 << "                    <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\" />\n"
+				 << "                </svg>\n"
+				 << "                <h3>Unable to read directory</h3>\n"
+				 << "                <p>The directory exists but cannot be accessed.</p>\n"
+				 << "            </div>\n";
+		}
+
+		html << "        </div>\n"
+			 << "        \n"
+			 << "        <div class=\"footer\">\n"
+			 << "            <div>42 Webserv • File Browser</div>\n"
+			 << "            <div class=\"server-info\">\n"
+			 << "                HTTP/1.1 • I/O Multiplexing • Static Files • Directory Listing\n"
+			 << "            </div>\n"
+			 << "        </div>\n"
+			 << "    </div>\n"
+			 << "</body>\n"
+			 << "</html>";
+
 		res.setBody(html.str());
 		return (res);
 	}
