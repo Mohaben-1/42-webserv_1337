@@ -19,8 +19,6 @@ class	Response
 		void				setBody(const std::string& content);
 		int					getStatusCode() const;
 		std::string			toString() const;
-		
-		// Helper function to get Content-Type from file extension
 		static std::string	getContentType(const std::string& path);
 };
 

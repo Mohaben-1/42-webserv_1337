@@ -17,10 +17,8 @@ void	Response::setHeader(const std::string& key, const std::string& value)
 void	Response::setBody(const std::string& content)
 {
 	body = content;
-	
-	// Automatically set Content-Length
-	std::ostringstream	oss;
 
+	std::ostringstream	oss;
 	oss << content.length();
 	setHeader("Content-Length", oss.str());
 }

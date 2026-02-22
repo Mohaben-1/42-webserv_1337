@@ -27,7 +27,7 @@ The objective is to reproduce key behaviors of servers such as Nginx while respe
 - Static file serving
 - Directory listing
 - File upload handling
-- CGI execution (PHP, Python, etc.)
+- CGI execution (Python, PHP, Perl, Bash.)
 - Custom error pages
 - Multiple server blocks (virtual hosting)
 - Non-blocking I/O with a single multiplexing loop
@@ -163,9 +163,9 @@ The server is event-driven and single-threaded, relying on I/O multiplexing to h
 
 AI tools were used during this project for:
 
-* Reviewing code structure and suggesting architectural improvements
-* Clarifying HTTP protocol behavior
-* Generating the UI inerfaces
+* Reviewing code structure and suggesting architectural improvements.
+* Clarifying HTTP protocol behavior.
+* Generating the UI inerfaces and CGI scripts.
 
 All implementation logic, architecture decisions, and final code were written and validated manually.
 

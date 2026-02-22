@@ -90,7 +90,6 @@ bool	Config::parse(const std::string& filename)
 	
 	while (std::getline(file, line))
 	{
-		// Remove comments
 		size_t	comment_pos = line.find('#');
 
 		if (comment_pos != std::string::npos)
@@ -98,15 +97,11 @@ bool	Config::parse(const std::string& filename)
 		line = trim(line);
 		if (line.empty())
 			continue ;
-
-		// Remove semicolon at the end
 		if (line[line.length() - 1] == ';')
 		{
 			line = line.substr(0, line.length() - 1);
 			line = trim(line);
 		}
-
-		// Handle braces
 		if (line.find('{') != std::string::npos)
 		{
 			if (line.find("server") == 0)
@@ -167,8 +162,7 @@ bool	Config::parse(const std::string& filename)
 				current_server->client_max_body_size = parseSize(tokens[1]);
 			else if (directive == "error_page" && tokens.size() >= 3)
 			{
-				// error_page 404 /404.html
-				// or error_page 500 502 503 /50x.html
+				// error_page
 				std::string	path = tokens[tokens.size() - 1]; // Last token is the path
 
 				for (size_t i = 1; i < tokens.size() - 1; i++)
@@ -199,7 +193,7 @@ bool	Config::parse(const std::string& filename)
 			else if (directive == "upload_store" && tokens.size() >= 2)
 				current_location->upload_store = tokens[1];
 			else if (directive == "cgi" && tokens.size() >= 3)
-				current_location->cgi_handlers[tokens[1]] = tokens[2];	// cgi .py /usr/bin/python3
+				current_location->cgi_handlers[tokens[1]] = tokens[2];
 			else if (directive == "client_max_body_size" && tokens.size() >= 2)
 				current_location->client_max_body_size = parseSize(tokens[1]);
 			else if (directive == "return" && tokens.size() >= 3)
@@ -216,8 +210,6 @@ bool	Config::parse(const std::string& filename)
 		std::cerr << "Error: No server blocks found in config" << std::endl;
 		return (false);
 	}
-
-	// Validate that there are no duplicate port+server_name combinations
 	if (!validatePorts())
 		return (false);
 	return (true);

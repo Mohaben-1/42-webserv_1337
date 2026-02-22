@@ -6,7 +6,6 @@
 #include "Response.hpp"
 #include "Config.hpp"
 
-// Structure to hold CGI info for async execution
 struct	CGIInfo
 {
 	std::string				interpreter;

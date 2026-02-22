@@ -7,15 +7,19 @@ SRCDIR		= srcs
 INCDIR		= includes
 OBJDIR		= objs
 
-SRCS		= $(wildcard $(SRCDIR)/*.cpp)
-OBJS		= $(SRCS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+FILES		= CGI Config Request Response Server ServerManager main
+HEADERS		= CGI Config Request Response Server ServerManager
+
+INCS 		= $(addprefix $(INCDIR)/, $(addsuffix .hpp, $(HEADERS)))
+SRCS		= $(addprefix $(SRCDIR)/, $(addsuffix .cpp, $(FILES)))
+OBJS		= $(addprefix $(OBJDIR)/, $(addsuffix .o, $(FILES)))
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(INCS) | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -I$(INCDIR) -c $< -o $@
 
 $(OBJDIR):

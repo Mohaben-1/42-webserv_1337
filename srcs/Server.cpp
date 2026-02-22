@@ -82,13 +82,11 @@ const LocationConfig*	Server::findLocation(const std::string& path) const
 {
 	const LocationConfig*	best_match = NULL;
 	size_t					best_match_len = 0;
-	
-	// Find the longest matching location path
+
 	for (size_t i = 0; i < config.locations.size(); i++)
 	{
 		const LocationConfig&	loc = config.locations[i];
 
-		// Check if path starts with location path
 		if (path.find(loc.path) == 0)
 		{
 			size_t	loc_len = loc.path.length();
@@ -105,15 +103,10 @@ const LocationConfig*	Server::findLocation(const std::string& path) const
 
 bool	Server::isMethodAllowed(const std::string& method, const LocationConfig* location) const
 {
-	// If no location specified, allow GET by default
 	if (!location)
 		return (method == "GET");
-	
-	// If location has no methods specified, allow all
 	if (location->methods.empty())
 		return (true);
-	
-	// Check if method is in the allowed list
 	for (size_t i = 0; i < location->methods.size(); i++)
 	{
 		if (location->methods[i] == method)
@@ -141,8 +134,7 @@ std::string	Server::buildFilePath(const std::string& uri, const LocationConfig* 
 		return (base_path + relative_path);
 	}
 
-	// Build full path - keep the URI path as-is
-	std::string full_path = base_path + uri;
+	std::string	full_path = base_path + uri;
 	return (full_path);
 }
 
@@ -150,20 +142,16 @@ Response	Server::serveFile(const std::string& path, const LocationConfig* locati
 {
 	(void)location;
 
-	// Check read permission before opening
 	if (access(path.c_str(), R_OK) != 0)
 		return (serve403());
 
 	Response	res;
 	std::string	content = readFile(path);
-
 	if (content.empty())
 	{
-		// File exists (caller checked) but read returned empty - could be truly empty or read error
 		struct stat	st;
 		if (stat(path.c_str(), &st) == 0 && st.st_size > 0)
 			return (serve500());
-		// File is genuinely empty, serve it
 	}
 	res.setStatus(200, "OK");
 	res.setHeader("Content-Type", Response::getContentType(path));
@@ -219,9 +207,7 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 		html << "<h1>Index of " << uri_path << "</h1>\n";
 		html << "<ul>\n";
 
-		// Read directory contents
 		DIR*	dir = opendir(fs_path.c_str());
-
 		if (dir)
 		{
 			struct dirent*	entry;
@@ -229,12 +215,10 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			while ((entry = readdir(dir)) != NULL)
 			{
 				std::string	name = entry->d_name;
+				std::string	href;
 
-				// Skip . but show ..
 				if (name == ".")
 					continue ;
-
-				std::string	href;
 				if (name == "..")
 					href = "../";
 				else
@@ -243,7 +227,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 					if (entry->d_type == DT_DIR)
 						href += "/";
 				}
-
 				html << "<li><a href=\"" << href << "\">" << name;
 				if (entry->d_type == DT_DIR)
 					html << "/";
@@ -255,7 +238,7 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 		res.setBody(html.str());
 		return (res);
 	}
-	// No index file and autoindex disabled = 404 Not Found
+	// No index file and autoindex disabled
 	return (serve404());
 }
 
@@ -327,12 +310,12 @@ Response	Server::serveRedirect(int code, const std::string& url)
 
 	switch (code)
 	{
-		case 301: message = "Moved Permanently"; break;
-		case 302: message = "Found"; break;
-		case 303: message = "See Other"; break;
-		case 307: message = "Temporary Redirect"; break;
-		case 308: message = "Permanent Redirect"; break;
-		default: message = "Redirect"; break;
+		case 301: message = "Moved Permanently"; break ;
+		case 302: message = "Found"; break ;
+		case 303: message = "See Other"; break ;
+		case 307: message = "Temporary Redirect"; break ;
+		case 308: message = "Permanent Redirect"; break ;
+		default: message = "Redirect"; break ;
 	}
 	res.setStatus(code, message);
 	res.setHeader("Location", url);
@@ -357,7 +340,6 @@ std::string	Server::readFile(const std::string& path)
 		return ("");
 
 	std::stringstream	buffer;
-
 	buffer << file.rdbuf();
 	file.close();
 	return (buffer.str());
@@ -412,26 +394,19 @@ std::string	Server::generateFilename() const
 
 bool	Server::isCGIRequest(const Request& req, CGIInfo& info)
 {
-	// Find matching location
 	const LocationConfig*	location = findLocation(req.getPath());
 
-	// Check for CGI handlers
 	if (!location || location->cgi_handlers.empty())
 		return (false);
-	
-	// Extract file extension from path
+
 	std::string	path = req.getPath();
 	size_t		query_pos = path.find('?');
-
 	if (query_pos != std::string::npos)
 		path = path.substr(0, query_pos);
-
-	// Check each registered CGI extension
 	for (std::map<std::string, std::string>::const_iterator it = location->cgi_handlers.begin(); it != location->cgi_handlers.end(); ++it)
 	{
 		if (CGI::isCGIRequest(path, it->first))
 		{
-			// Populate CGI info
 			info.cgi_extension = it->first;
 			info.interpreter = it->second;
 			info.location = location;
@@ -443,23 +418,16 @@ bool	Server::isCGIRequest(const Request& req, CGIInfo& info)
 
 Response	Server::handleNonCGIRequest(const Request& req)
 {
-	// Find matching location
 	const LocationConfig*	location = findLocation(req.getPath());
 
-	// Check for HTTP redirection first
 	if (location && location->redirect_code > 0 && !location->redirect_url.empty())
 		return (serveRedirect(location->redirect_code, location->redirect_url));
 
-	// Check if method is a known/supported HTTP method
 	std::string	m = req.getMethod();
 	if (m != "GET" && m != "POST" && m != "DELETE")
 		return (serve501());
-
-	// Check if method is allowed for this route
 	if (!isMethodAllowed(req.getMethod(), location))
 		return (serve405());
-	
-	// Check body size limits for POST
 	if (req.getMethod() == "POST")
 	{
 		size_t	max_size = config.client_max_body_size;
@@ -469,77 +437,49 @@ Response	Server::handleNonCGIRequest(const Request& req)
 		if (req.getContentLength() > max_size)
 			return (serve413());
 	}
-
-	// Handle POST requests (non-CGI)
 	if (req.getMethod() == "POST")
 		return (handlePost(req, location));
-
-	// Handle DELETE requests
 	if (req.getMethod() == "DELETE")
 		return (handleDelete(req, location));
 
 	// Build file path for GET
 	std::string	file_path = buildFilePath(req.getPath(), location);
 
-	// Check if path exist
 	if (!fileExists(file_path))
 		return (serve404());
-	
-	// Check if it's a directory
 	if (isDirectory(file_path))
 	{
-		std::string uri = req.getPath();
+		std::string	uri = req.getPath();
 		if (!uri.empty() && uri[uri.size() - 1] != '/')
 			return (serveRedirect(301, uri + "/"));
 		return (serveDirectory(file_path, req.getPath(), location));
 	}
-
-	// It's a file, serve it
 	return (serveFile(file_path, location));
 }
 
 Response	Server::handlePost(const Request& req, const LocationConfig* location)
 {
-	// Check if this is a multipart upload
 	if (req.isMultipart())
 		return (handleMultipartUpload(req, location));
-
-	// Handle raw POST data (application/x-www-form-urlencoded or raw file)
 	return (handleRawUpload(req, location));
 }
 
 Response	Server::handleMultipartUpload(const Request& req, const LocationConfig* location)
 {
-	// Parse multipart data
 	Request&	mutable_req = const_cast<Request&>(req);
 
 	if (!mutable_req.parseMultipart())
 	{
-		// Provide more detailed error information
-		std::string			boundary = req.getBoundary();
-		std::ostringstream	error_msg;
-
-		error_msg << "{\"status\":\"error\",\"message\":\"Failed to parse multipart data\"";
-		if (boundary.empty())
-			error_msg << ",\"detail\":\"No boundary found in Content-Type header\"";
-		else
-		{
-			error_msg << ",\"detail\":\"Boundary parsing failed. Check data format.\"";
-			error_msg << ",\"boundary\":\"" << boundary << "\"";
-		}
-		error_msg << ",\"body_size\":" << req.getBody().length() << "}";
-		
 		Response	res;
 		res.setStatus(400, "Bad Request");
-		res.setHeader("Content-Type", "application/json");
-		res.setBody(error_msg.str());
+		res.setHeader("Content-Type", "text/html");
+		res.setBody("<html><body><h1>400 Bad Request</h1><p>Invalid multipart form data.</p></body></html>");
 		return (res);
 	}
 
 	const std::vector<MultipartPart>&	parts = req.getParts();
 	std::string							upload_dir = getUploadPath(location);
 
-	// Create upload directory if it doesn't exist
 	mkdir(upload_dir.c_str(), 0755);
 
 	int							files_saved = 0;
@@ -549,12 +489,8 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 	{
 		const MultipartPart&	part = parts[i];
 
-		// Only process file uploads
-		if (!part.is_file)
-			continue ;
-		if (part.filename.empty())
-			continue ;
-		if (part.data.empty())
+		// Only process valid file parts (accept empty content too)
+		if (!part.is_file || part.filename.empty())
 			continue ;
 
 		// Generate unique filename if file already exists
@@ -576,26 +512,20 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 			file_path = new_name.str();
 			suffix++;
 		}
-		if (writeFile(file_path, part.data))
-		{
-			files_saved++;
-
-			// Extract just the filename from the path
-			size_t		last_slash = file_path.find_last_of('/');
-			std::string	saved_name = (last_slash != std::string::npos) ? file_path.substr(last_slash + 1) : file_path;
-
-			saved_files.push_back(saved_name);
-		}
-		else
+		if (!writeFile(file_path, part.data))
 			return (serve500());
+		files_saved++;
+		size_t		last_slash = file_path.find_last_of('/');
+		std::string	saved_name = (last_slash != std::string::npos) ? file_path.substr(last_slash + 1) : file_path;
+		saved_files.push_back(saved_name);
 	}
 	if (files_saved == 0)
 	{
 		Response	res;
 
 		res.setStatus(400, "Bad Request");
-		res.setHeader("Content-Type", "application/json");
-		res.setBody("{\"status\":\"error\",\"message\":\"No files found in upload. Make sure the form field is a file input.\"}");
+		res.setHeader("Content-Type", "text/html");
+		res.setBody("<html><body><h1>400 Bad Request</h1><p>No valid files found in upload.</p></body></html>");
 		return (res);
 	}
 
@@ -625,17 +555,6 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 Response	Server::handleRawUpload(const Request& req, const LocationConfig* location)
 {
 	std::string	body = req.getBody();
-
-	if (body.empty())
-	{
-		Response	res;
-
-		res.setStatus(400, "Bad Request");
-		res.setHeader("Content-Type", "application/json");
-		res.setBody("{\"status\":\"error\",\"message\":\"Empty request body\"}");
-		return (res);
-	}
-	
 	std::string	upload_dir = getUploadPath(location);
 
 	mkdir(upload_dir.c_str(), 0755);
@@ -665,7 +584,6 @@ Response	Server::handleRawUpload(const Request& req, const LocationConfig* locat
 	if (!writeFile(file_path, body))
 		return (serve500());
 
-	// Return 201 Created with Location header (nginx-like behavior)
 	Response	res;
 	res.setStatus(201, "Created");
 	res.setHeader("Content-Length", "0");
@@ -706,7 +624,6 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 		if (uri.find(location->path) == 0)
 		{
 			filename = uri.substr(location->path.length());
-			// Remove leading slash if present
 			if (!filename.empty() && filename[0] == '/')
 				filename = filename.substr(1);
 		}
@@ -717,11 +634,9 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 	else
 		file_path = buildFilePath(req.getPath(), location);	// Fall back to regular file path building
 
-	// Check if file exists
 	if (!fileExists(file_path))
 		return (serve404());
 
-	// Don't allow deleting directories (for safety)
 	if (isDirectory(file_path))
 		return (serve403());
 
@@ -736,11 +651,9 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 	if (!in_root && !in_upload)
 		return (serve403());
 
-	// Attempt to delete the file
 	if (!deleteFile(file_path))
 		return (serve500());
 
-	// Return 204 No Content (nginx-like behavior)
 	Response	res;
 	res.setStatus(204, "No Content");
 	res.setHeader("Content-Length", "0");

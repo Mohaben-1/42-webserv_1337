@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 
-// Represents a location block
 struct	LocationConfig
 {
 	std::string							path;						// "/" or "/upload"
@@ -22,18 +21,17 @@ struct	LocationConfig
 	LocationConfig() : autoindex(false), client_max_body_size(0), redirect_code(0) {}
 };
 
-// Represents a server block
 struct	ServerConfig
 {
-	int							port;						// 8080
-	std::string					server_name;				// "localhost"
-	std::string					root;						// "./www"
-	std::string					index;						// "index.html"
-	size_t						client_max_body_size;		// 10485760 (10M in bytes)
-	std::map<int, std::string>	error_pages;				// {404: "/404.html"}
+	int							port;
+	std::string					server_name;
+	std::string					root;
+	std::string					index;
+	size_t						client_max_body_size;
+	std::map<int, std::string>	error_pages;
 	std::vector<LocationConfig>	locations;
 	
-	ServerConfig() : port(8080), client_max_body_size(1048576) {}	// Default 1M
+	ServerConfig() : port(8080), client_max_body_size(1048576) {}
 };
 
 class	Config
