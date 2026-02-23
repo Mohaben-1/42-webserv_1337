@@ -7,16 +7,16 @@
 
 struct	LocationConfig
 {
-	std::string							path;						// "/" or "/upload"
-	std::string							root;						// Custom root for this location
-	std::string							index;						// Custom index file for this location
-	std::vector<std::string>			methods;					// ["GET", "POST"]
-	bool								autoindex;					// true/false
-	std::string							upload_store;				// "./www/uploads"
-	std::map<std::string, std::string>	cgi_handlers;				// {".py": "/usr/bin/python3", ".php": "/usr/bin/php-cgi"}
-	size_t								client_max_body_size;		// Override for this location (0 = use server default)
-	int									redirect_code;				// 301, 302, etc. (0 = no redirect)
-	std::string							redirect_url;				// URL to redirect to
+	std::string							path;
+	std::string							root;
+	std::string							index;
+	std::vector<std::string>			methods;
+	bool								autoindex;
+	std::string							upload_store;
+	std::map<std::string, std::string>	cgi_handlers;
+	size_t								client_max_body_size;
+	int									redirect_code;
+	std::string							redirect_url;
 
 	LocationConfig() : autoindex(false), client_max_body_size(0), redirect_code(0) {}
 };

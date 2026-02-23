@@ -100,7 +100,7 @@ char**	CGI::buildEnvArray() const
 	env_vars.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	env_vars.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	env_vars.push_back("SERVER_SOFTWARE=Webserv/1.0");
-	env_vars.push_back("REDIRECT_STATUS=200");	// Required for PHP-CGI (force-cgi-redirect security feature)
+	env_vars.push_back("REDIRECT_STATUS=200");
 	env_vars.push_back("REQUEST_METHOD=" + request_method);
 	env_vars.push_back("QUERY_STRING=" + query_string);
 	env_vars.push_back("SCRIPT_NAME=" + script_name);
@@ -243,9 +243,9 @@ bool	CGI::parseOutputString(const std::string& output, Response& response) const
 
 	if (header_end == std::string::npos)
 	{
-		header_end = output.find("\n\n");	// Try with just \n\n because Some CGI scripts might output just LF (Unix-style)
+		header_end = output.find("\n\n");
 		if (header_end == std::string::npos)
-			return (false);	// No valid CGI header separator found (invalid CGI output)
+			return (false);
 	}
 
 	std::string	headers_section = output.substr(0, header_end);
@@ -367,7 +367,6 @@ std::string	CGI::getScriptPath(const std::string& url_path, const std::string& d
 
 	std::string	relative_path = document_root + script_url;
 
-	// Convert to absolute path (required for PHP-CGI)
 	char	abs_path[PATH_MAX];
 	if (realpath(relative_path.c_str(), abs_path) != NULL)
 		return (std::string(abs_path));

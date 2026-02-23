@@ -11,10 +11,10 @@ from typing import Dict, List, Tuple
 
 # Configuration
 PRESET_COOKIES = [
-    {"name": "Name:", "value": "Medd", "description": "User identity", "color": "#FFFFFF"},
-    {"name": "Country:", "value": "Morocco", "description": "Location", "color": "#FFFFFF"},
-    {"name": "Language:", "value": "Ar", "description": "Language", "color": "#FFFFFF"},
-    {"name": "Timezone:", "value": "UTC+1", "description": "Time zone", "color": "#FFFFFF"},
+    {"name": "Name", "value": "Medd", "description": "User identity", "color": "#FFFFFF"},
+    {"name": "Country", "value": "Morocco", "description": "Location", "color": "#FFFFFF"},
+    {"name": "Language", "value": "Ar", "description": "Language", "color": "#FFFFFF"},
+    {"name": "Timezone", "value": "UTC+1", "description": "Time zone", "color": "#FFFFFF"},
 ]
 
 def get_cookies() -> Dict[str, str]:

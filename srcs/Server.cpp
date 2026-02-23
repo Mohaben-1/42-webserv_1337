@@ -22,7 +22,6 @@ Server::~Server()
 
 bool	Server::start()
 {
-	// Create socket
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd < 0)
 	{
@@ -30,7 +29,6 @@ bool	Server::start()
 		return (false);
 	}
 
-	// Set socket options
 	int opt = 1;
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
@@ -38,7 +36,6 @@ bool	Server::start()
 		return (false);
 	}
 
-	// Set server socket to non-blocking mode (only F_SETFL and O_NONBLOCK allowed on macOS)
 	if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0)
 	{
 		std::cerr << "Error: Failed to set non-blocking mode on server socket" << std::endl;
@@ -47,7 +44,6 @@ bool	Server::start()
 		return (false);
 	}
 
-	// Bind to port
 	struct sockaddr_in	address;
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
@@ -59,7 +55,6 @@ bool	Server::start()
 		return (false);
 	}
 
-	// Listen
 	if (listen(server_fd, SOMAXCONN) < 0)
 	{
 		std::cerr << "Error: Listen failed" << std::endl;
@@ -119,12 +114,10 @@ std::string	Server::buildFilePath(const std::string& uri, const LocationConfig* 
 {
 	std::string	base_path = config.root;
 
-	// Use location's root if specified
 	if (location && !location->root.empty())
 	{
 		base_path = location->root;
 
-		// Remove the location path from URI since we're using a different root
 		std::string	relative_path = uri;
 
 		if (relative_path.find(location->path) == 0)
@@ -161,13 +154,11 @@ Response	Server::serveFile(const std::string& path, const LocationConfig* locati
 
 Response	Server::serveDirectory(const std::string& fs_path, const std::string& uri_path, const LocationConfig* location)
 {
-	// Try to serve index file
 	std::string	index_path = fs_path;
 
 	if (index_path[index_path.length() - 1] != '/')
 		index_path += "/";
 
-	// Use location's index if specified, otherwise use server's index
 	std::string	index_file = config.index;
 
 	if (location && !location->index.empty())
@@ -176,7 +167,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 	if (fileExists(index_path))
 		return (serveFile(index_path, location));
 
-	// If autoindex is enabled, show directory listing
 	if (location && location->autoindex)
 	{
 		Response	res;
@@ -184,12 +174,10 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 		res.setStatus(200, "OK");
 		res.setHeader("Content-Type", "text/html");
 
-		// Build base URI for links
 		std::string	base = uri_path;
 		if (!base.empty() && base[base.size() - 1] != '/')
 			base += '/';
 
-		// Generate directory listing HTML
 		std::ostringstream	html;
 
 		html << "<!DOCTYPE html>\n"
@@ -580,7 +568,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			 << "                <a href=\"/\">🏠 Home</a>\n"
 			 << "                <span class=\"separator\">›</span>\n";
 
-		// Generate breadcrumb navigation
 		std::string path_so_far = "/";
 		std::string remaining_path = uri_path;
 		if (remaining_path[0] == '/')
@@ -608,7 +595,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			 << "            \n"
 			 << "            <h1>📁 ";
 
-		// Extract last directory name for title
 		std::string dir_name = uri_path;
 		if (dir_name == "/")
 			html << "Root Directory";
@@ -632,7 +618,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			 << "        <div class=\"stats-bar\">\n"
 			 << "            <div class=\"stats-left\">\n";
 
-		// Count items
 		int dirCount = 0;
 		int fileCount = 0;
 		DIR* dir = opendir(fs_path.c_str());
@@ -671,7 +656,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			 << "        \n"
 			 << "        <div class=\"file-list\">\n";
 
-		// Parent directory link
 		if (uri_path != "/")
 		{
 			html << "            <div class=\"parent-item\">\n"
@@ -686,14 +670,12 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 				 << "            </div>\n";
 		}
 
-		// List header
 		html << "            <div class=\"list-header\">\n"
 			 << "                <div>Name</div>\n"
 			 << "                <div>Size</div>\n"
 			 << "                <div>Modified</div>\n"
 			 << "            </div>\n";
 
-		// Open directory and list contents
 		dir = opendir(fs_path.c_str());
 		if (dir)
 		{
@@ -701,7 +683,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			std::vector<std::string> directories;
 			std::vector<std::string> files;
 
-			// Separate directories and files
 			while ((entry = readdir(dir)) != NULL)
 			{
 				std::string name = entry->d_name;
@@ -715,11 +696,9 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 			}
 			closedir(dir);
 
-			// Sort alphabetically
 			std::sort(directories.begin(), directories.end());
 			std::sort(files.begin(), files.end());
 
-			// Display directories first
 			for (std::vector<std::string>::const_iterator it = directories.begin(); it != directories.end(); ++it)
 			{
 				const std::string& name = *it;
@@ -734,13 +713,11 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 					 << "            </div>\n";
 			}
 
-			// Display files
 			for (std::vector<std::string>::const_iterator it = files.begin(); it != files.end(); ++it)
 			{
 				const std::string& name = *it;
 				std::string href = base + name;
-				
-				// Choose icon based on file extension
+
 				std::string icon = "📄";
 				size_t dot_pos = name.find_last_of('.');
 				if (dot_pos != std::string::npos)
@@ -796,7 +773,6 @@ Response	Server::serveDirectory(const std::string& fs_path, const std::string& u
 		res.setBody(html.str());
 		return (res);
 	}
-	// No index file and autoindex disabled
 	return (serve404());
 }
 
@@ -807,7 +783,6 @@ Response	Server::serveErrorPage(int code, const std::string& message)
 	res.setStatus(code, message);
 	res.setHeader("Content-Type", "text/html");
 
-	// Check if custom error page exists
 	std::map<int, std::string>::const_iterator	it = config.error_pages.find(code);
 
 	if (it != config.error_pages.end())
@@ -823,7 +798,6 @@ Response	Server::serveErrorPage(int code, const std::string& message)
 		}
 	}
 
-	// Default error page
 	std::ostringstream	html;
 
 	html << "<!DOCTYPE html>\n";
@@ -1000,7 +974,6 @@ Response	Server::handleNonCGIRequest(const Request& req)
 	if (req.getMethod() == "DELETE")
 		return (handleDelete(req, location));
 
-	// Build file path for GET
 	std::string	file_path = buildFilePath(req.getPath(), location);
 
 	if (!fileExists(file_path))
@@ -1047,11 +1020,9 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 	{
 		const MultipartPart&	part = parts[i];
 
-		// Only process valid file parts (accept empty content too)
 		if (!part.is_file || part.filename.empty())
 			continue ;
 
-		// Generate unique filename if file already exists
 		std::string	base_path = upload_dir + "/" + part.filename;
 		std::string	file_path = base_path;
 		int			suffix = 1;
@@ -1059,7 +1030,6 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 
 		while (stat(file_path.c_str(), &st) == 0)
 		{
-			// File exists, add suffix
 			size_t				dot_pos = part.filename.find_last_of('.');
 			std::ostringstream	new_name;
 
@@ -1087,16 +1057,13 @@ Response	Server::handleMultipartUpload(const Request& req, const LocationConfig*
 		return (res);
 	}
 
-	// Return 201 Created with Location header (nginx-like behavior)
 	Response	res;
 	res.setStatus(201, "Created");
 	res.setHeader("Content-Length", "0");
 
-	// Build Location header from the first uploaded file
 	std::string	location_path;
 	if (location && !location->upload_store.empty())
 	{
-		// Derive URI path from upload_store relative to server root
 		std::string	store = location->upload_store;
 		if (store.find(config.root) == 0)
 			location_path = store.substr(config.root.length());
@@ -1116,8 +1083,7 @@ Response	Server::handleRawUpload(const Request& req, const LocationConfig* locat
 	std::string	upload_dir = getUploadPath(location);
 
 	mkdir(upload_dir.c_str(), 0755);
-	
-	// Generate filename based on Content-Type or use generic
+
 	std::string	filename = generateFilename();
 	std::string	ct = req.getHeader("Content-Type");
 
@@ -1172,10 +1138,8 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 {
 	std::string	file_path;
 
-	// If location has upload_store, use it as base for DELETE
 	if (location && !location->upload_store.empty())
 	{
-		// Extract filename from URI (remove location prefix)
 		std::string	uri = req.getPath();
 		std::string	filename;
 
@@ -1190,7 +1154,7 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 		file_path = location->upload_store + "/" + filename;
 	}
 	else
-		file_path = buildFilePath(req.getPath(), location);	// Fall back to regular file path building
+		file_path = buildFilePath(req.getPath(), location);
 
 	if (!fileExists(file_path))
 		return (serve404());
@@ -1198,11 +1162,9 @@ Response	Server::handleDelete(const Request& req, const LocationConfig* location
 	if (isDirectory(file_path))
 		return (serve403());
 
-	// Security check: ensure we're only deleting within allowed paths
 	std::string	upload_dir = getUploadPath(location);
 	std::string	root = config.root;
 
-	// Ensure the file is within the server root or upload directory
 	bool		in_root = (file_path.find(root) == 0);
 	bool		in_upload = (!upload_dir.empty() && file_path.find(upload_dir) == 0);
 	

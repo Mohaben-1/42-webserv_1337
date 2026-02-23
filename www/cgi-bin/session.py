@@ -51,7 +51,6 @@ class SessionManager:
         self.sessions[session_id] = {
             'username': username,
             'created': time.time(),
-            'visits': 1,
             'user_agent': os.environ.get('HTTP_USER_AGENT', 'Unknown'),
             'ip': os.environ.get('REMOTE_ADDR', '127.0.0.1')
         }
@@ -61,9 +60,6 @@ class SessionManager:
     def get(self, session_id: str) -> Optional[Dict]:
         """Get session data if valid"""
         session = self.sessions.get(session_id)
-        if session:
-            session['visits'] = session.get('visits', 0) + 1
-            self._save()
         return session
     
     def delete(self, session_id: str):

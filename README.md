@@ -18,9 +18,8 @@ This project explores low-level networking concepts including:
 
 The objective is to reproduce key behaviors of servers such as Nginx while respecting the constraints of C++98.
 
----
 
-## Features
+### Features
 
 - HTTP/1.1 compliant request parsing
 - Support for GET, POST, and DELETE methods
@@ -71,6 +70,15 @@ make re
 
 ---
 
+### Installation
+
+Install siege:
+```bash
+brew install siege
+```
+
+---
+
 ### Execution
 
 Run the server with a configuration file:
@@ -98,7 +106,7 @@ curl http://localhost:8080
 Test POST request:
 
 ```bash
-curl -X POST -d "name=test" http://localhost:8080
+curl -X POST -d "name=test" http://localhost:8080/uploads/
 ```
 
 ---
@@ -151,11 +159,7 @@ The server is event-driven and single-threaded, relying on I/O multiplexing to h
 - [Nginx Official Documentation](https://nginx.org/en/docs/)
 - [C++98 Reference Documentation](https://en.cppreference.com/w/cpp?oldid=179926)
 - [Socket Programming in C/C++ – GeeksforGeeks](https://www.geeksforgeeks.org/c/socket-programming-cc/)
-
-### CGI Documentation
-
 - [RFC 3875 – Common Gateway Interface](https://www.rfc-editor.org/rfc/rfc3875)
-- [PHP CGI Documentation](https://www.php.net/manual/en/install.unix.commandline.php)
 
 ---
 
@@ -184,6 +188,141 @@ Through this project, the following concepts were mastered:
 * Memory and resource management
 
 This project provides a deep understanding of how real-world web servers function under the hood.
+
+---
+
+## Webserv Testing Guide
+
+### GET request
+
+```bash
+curl -i http://127.0.0.1:8080/
+```
+
+Expected:
+
+```
+HTTP/1.1 200 OK
+```
+---
+### GET non-existing file
+
+```bash
+curl -i http://127.0.0.1:8080/does_not_exist.html
+```
+
+Expected:
+
+```
+HTTP/1.1 404 Not Found
+```
+
+---
+
+### POST request
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/uploads/ -d "test upload"
+```
+
+Expected:
+
+```
+HTTP/1.1 201 Created
+```
+
+File must be created in upload directory.
+
+Upload MultiPart files
+```bash
+curl -i -F "file1=@hello.txt" -F "file2=@empty.txt" http://localhost:8080/uploads/
+```
+
+See the MultiPart request
+```bash
+curl --trace-ascii - -F "file1=@hello.txt" -F "file2=@empty.txt" http://localhost:8080/uploads/
+```
+
+---
+
+### DELETE request
+
+```bash
+curl -i -X DELETE http://127.0.0.1:8080/uploads/file
+```
+
+Expected:
+
+```
+HTTP/1.1 204 No Content
+```
+
+---
+
+### Client Body Size Limit Test
+
+Small body:
+
+```bash
+head -c 100 /dev/zero | curl -i -X POST http://127.0.0.1:8080/upload --data-binary @-
+```
+
+Expected:
+
+```
+201 Created
+```
+
+Large body (must fail):
+
+```bash
+head -c 20000000 /dev/zero | curl -i -X POST http://127.0.0.1:8080/upload --data-binary @-
+```
+
+Expected:
+
+```
+413 Payload Too Large
+```
+
+---
+
+### Directory Listing Test
+
+If enabled:
+
+```bash
+curl http://127.0.0.1:8080/uploads/
+```
+
+Expected:
+
+Directory listing or index file.
+
+---
+
+### Hostname Virtual Server Test
+
+```bash
+curl --resolve example.com:8080:127.0.0.1 http://example.com:8080/
+```
+
+Expected:
+
+Correct website returned.
+
+---
+
+### Stress Test (Siege)
+
+
+```bash
+siege -b -t60s -c30 http://127.0.0.1:8080/
+```
+
+Expected:
+
+Availability ≥ 99.5%
 
 ---
 

@@ -138,16 +138,14 @@ bool	Config::parse(const std::string& filename)
 			}
 			continue ;
 		}
-		
-		// Parse directives
+
 		std::vector<std::string>	tokens = split(line, ' ');
 
 		if (tokens.empty())
 			continue ;
 		
 		std::string	directive = tokens[0];
-		
-		// Server-level directives
+
 		if (in_server && !in_location && current_server)
 		{
 			if (directive == "listen" && tokens.size() >= 2)
@@ -162,8 +160,7 @@ bool	Config::parse(const std::string& filename)
 				current_server->client_max_body_size = parseSize(tokens[1]);
 			else if (directive == "error_page" && tokens.size() >= 3)
 			{
-				// error_page
-				std::string	path = tokens[tokens.size() - 1]; // Last token is the path
+				std::string	path = tokens[tokens.size() - 1];
 
 				for (size_t i = 1; i < tokens.size() - 1; i++)
 				{
@@ -176,7 +173,6 @@ bool	Config::parse(const std::string& filename)
 			}
 		}
 
-		// Location-level directives
 		if (in_location && current_location)
 		{
 			if (directive == "methods" && tokens.size() >= 2)
@@ -198,7 +194,6 @@ bool	Config::parse(const std::string& filename)
 				current_location->client_max_body_size = parseSize(tokens[1]);
 			else if (directive == "return" && tokens.size() >= 3)
 			{
-				// return 301
 				current_location->redirect_code = std::atoi(tokens[1].c_str());
 				current_location->redirect_url = tokens[2];
 			}
@@ -217,7 +212,6 @@ bool	Config::parse(const std::string& filename)
 
 bool	Config::validatePorts() const
 {
-	// Check for duplicate port + server_name combinations
 	for (size_t i = 0; i < servers.size(); i++)
 	{
 		for (size_t j = i + 1; j < servers.size(); j++)

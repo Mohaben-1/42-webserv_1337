@@ -21,17 +21,14 @@ class	Server
 		int				server_fd;
 		ServerConfig	config;
 
-		// Location matching
 		const LocationConfig*	findLocation(const std::string& path) const;
 		bool					isMethodAllowed(const std::string& method, const LocationConfig* location) const;
 
-		// File operations
 		std::string				readFile(const std::string& path);
 		bool					fileExists(const std::string& path);
 		bool					isDirectory(const std::string& path);
 		bool					writeFile(const std::string& path, const std::string& content);
-		
-		// Response builders
+
 		Response				serveFile(const std::string& path, const LocationConfig* location);
 		Response				serveDirectory(const std::string& fs_path, const std::string& uri_path, const LocationConfig* location);
 		Response				serveErrorPage(int code, const std::string& message);
@@ -42,39 +39,32 @@ class	Server
 		Response				serve413();
 		Response				serve500();
 		Response				serve501();
-		
-		// POST handling
+
 		Response				handlePost(const Request& req, const LocationConfig* location);
 		Response				handleMultipartUpload(const Request& req, const LocationConfig* location);
 		Response				handleRawUpload(const Request& req, const LocationConfig* location);
-		
-		// DELETE handling
+
 		Response				handleDelete(const Request& req, const LocationConfig* location);
 		bool					deleteFile(const std::string& path);
-		
-		// Helper
+
 		std::string				buildFilePath(const std::string& uri, const LocationConfig* location);
 		std::string				getUploadPath(const LocationConfig* location) const;
 		std::string				generateFilename() const;
 	public:
 		Server(const ServerConfig& cfg);
 		~Server();
-		
+
 		bool				start();
 		void				stop();
-		
-		// Expose server_fd for poll()
+
 		int					getServerFd() const { return server_fd; }
-		
-		// Get config info
+
 		int					getPort() const { return config.port; }
 		std::string			getServerName() const { return config.server_name; }
 		const ServerConfig&	getConfig() const { return config; }
-		
-		// CGI detection for async handling
+
 		bool				isCGIRequest(const Request& req, CGIInfo& info);
-		
-		// Handle non-CGI request (excludes CGI processing)
+
 		Response			handleNonCGIRequest(const Request& req);
 };
 
